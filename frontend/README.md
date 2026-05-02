@@ -22,7 +22,7 @@ bun run ocr
 By default the CLI posts to `http://localhost:3000/`. Override the backend target with options:
 
 ```bash
-bun run ocr -- --hostname 127.0.0.1 --port 3000
+bun run ocr -- --host 127.0.0.1 --port 3000
 ```
 
 Positional arguments are also accepted:

@@ -21,7 +21,7 @@ const noteSchema: z.ZodType<Note> = z.object({
 });
 
 type CliOptions = {
-  hostname: string;
+  host: string;
   port: number;
 };
 
@@ -35,7 +35,7 @@ function matchesModel(value: string | undefined): boolean {
 
 function parseCliOptions(argv: string[]): CliOptions {
   const options: CliOptions = {
-    hostname: "localhost",
+    host: "localhost",
     port: 3000,
   };
   const positionals: string[] = [];
@@ -43,23 +43,23 @@ function parseCliOptions(argv: string[]): CliOptions {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
-    if (arg === "--hostname" || arg === "--host") {
+    if (arg === "--host" || arg === "--host") {
       const value = argv[index + 1];
       if (!value) {
         throw new Error(`${arg} requires a value`);
       }
-      options.hostname = value;
+      options.host = value;
       index += 1;
       continue;
     }
 
-    if (arg.startsWith("--hostname=")) {
-      options.hostname = arg.slice("--hostname=".length);
+    if (arg.startsWith("--host=")) {
+      options.host = arg.slice("--host=".length);
       continue;
     }
 
     if (arg.startsWith("--host=")) {
-      options.hostname = arg.slice("--host=".length);
+      options.host = arg.slice("--host=".length);
       continue;
     }
 
@@ -82,7 +82,7 @@ function parseCliOptions(argv: string[]): CliOptions {
   }
 
   if (positionals[0]) {
-    options.hostname = positionals[0];
+    options.host = positionals[0];
   }
 
   if (positionals[1]) {
@@ -93,8 +93,8 @@ function parseCliOptions(argv: string[]): CliOptions {
     throw new Error(`Unexpected arguments: ${positionals.slice(2).join(" ")}`);
   }
 
-  if (options.hostname.trim().length === 0) {
-    throw new Error("hostname cannot be empty");
+  if (options.host.trim().length === 0) {
+    throw new Error("host cannot be empty");
   }
 
   return options;
@@ -202,7 +202,7 @@ async function createNote(baseUrl: URL, note: Note): Promise<CreateNoteResult> {
 
 async function main() {
   const options = parseCliOptions(process.argv.slice(2));
-  const backendUrl = new URL(`http://${options.hostname}:${options.port}/`);
+  const backendUrl = new URL(`http://${options.host}:${options.port}/`);
   const imagePaths = await getImagePaths();
 
   if (imagePaths.length === 0) {
