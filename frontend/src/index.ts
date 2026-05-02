@@ -8,15 +8,15 @@ const MODEL_FAMILY = "zai-org/glm-4.6v-flash";
 const NOTES_DIR = path.join(process.cwd(), "notes");
 const SUPPORTED_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg"]);
 const SYSTEM_PROMPT = `You are an expert money sorter who is most familiar with EUR and JPY. Your job is to look at the provided image, and identify the following information from it:
-- Denomination (ISO 4217 currency code)
-- Amount
+- currency (ISO 4217 currency code)
+- denomination
 - Serial number
 
 The user is not interacting with you directly, so you cannot ask any followup questions, and you must not say anything extraneous apart from the JSON output.`;
 
 const noteSchema: z.ZodType<Note> = z.object({
-  denomination: z.string().length(3),
-  amount: z.number().int().positive(),
+  currency: z.string().length(3),
+  denomination: z.number().int().positive(),
   serial: z.string(),
 });
 
@@ -168,7 +168,7 @@ async function extractNote(client: LMStudioClient, model: Awaited<ReturnType<LMS
 
   return {
     ...result.parsed,
-    denomination: result.parsed.denomination.toUpperCase(),
+    currency: result.parsed.currency.toUpperCase(),
     serial: result.parsed.serial.trim(),
   };
 }
@@ -220,7 +220,7 @@ async function main() {
 
     if (result.status === "duplicate") {
       duplicates.push(result.note);
-      console.log(`Skipped existing note ${result.note.serial} (${result.note.denomination})`);
+      console.log(`Skipped existing note ${result.note.serial} (${result.note.currency})`);
       continue;
     }
 

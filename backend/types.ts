@@ -1,7 +1,7 @@
 export interface Note {
     serial: string;
-    denomination: string;
-    amount: number;
+    currency: string;
+    denomination: number;
     created?: string;
 }
 
