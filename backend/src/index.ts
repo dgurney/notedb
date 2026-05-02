@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Note, ErrorResponse } from "./types";
-import { EUR } from "./currency";
+import { EUR, JPY } from "./currency";
 
 
 // not very robust but good enough for our needs
@@ -22,6 +22,26 @@ db.run(`
     UNIQUE(serial,currency)
   )
 `);
+
+const currencyValidators = {
+    EUR,
+    JPY,
+};
+
+function validateSupportedCurrency(note: Note): Response | undefined {
+    const Validator = currencyValidators[note.currency as keyof typeof currencyValidators];
+    if (!Validator) {
+        return undefined;
+    }
+
+    const currency = new Validator();
+    const valid = currency.validate(note.serial, note.denomination);
+    if (!valid) {
+        return Response.json(<ErrorResponse>{
+            error: `note is not a valid ${currency.code} note`
+        }, { status: 400 });
+    }
+}
 
 
 const server = Bun.serve({
@@ -58,17 +78,9 @@ const server = Bun.serve({
 
                 note.currency = note.currency.toUpperCase()
 
-                switch (note.currency) {
-                    case "EUR": {
-                        const currency = new EUR();
-                        const valid = currency.validate(note.serial, note.denomination);
-                        if (!valid) {
-                            return Response.json(<ErrorResponse>{
-                                error: `note is not a valid ${currency.code} note`
-                            }, { status: 400 });
-                        }
-                        break;
-                    }
+                const validationError = validateSupportedCurrency(note);
+                if (validationError) {
+                    return validationError;
                 }
 
                 const existingNote = db.query("SELECT 1 FROM notes WHERE serial = ? AND currency = ?").get(note.serial, currency);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EUR } from "./currency";
+import { EUR, JPY } from "./currency";
 
 describe("EUR validation", () => {
     const eur = new EUR();
@@ -41,5 +41,17 @@ describe("EUR validation", () => {
         { serial: "PA8124161758", reason: "checksum digit sequence does not match P's control value" },
     ])("rejects $serial because $reason", ({ serial }) => {
         expect(eur.validate(serial, 10)).toBe(false);
+    });
+});
+
+describe("JPY validation", () => {
+    const jpy = new JPY();
+
+    it.each([1000, 2000, 5000, 10000])("accepts supported denomination %i", (denomination) => {
+        expect(jpy.validate("", denomination)).toBe(true);
+    });
+
+    it.each([1, 5, 10, 100, 500, 3000, 20000])("rejects unsupported denomination %i", (denomination) => {
+        expect(jpy.validate("", denomination)).toBe(false);
     });
 });

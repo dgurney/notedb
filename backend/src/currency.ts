@@ -84,9 +84,13 @@ export class EUR extends Currency {
 
 export class JPY extends Currency {
     constructor() {
-        super("JPY")
+        super("JPY");
+        this.validDenominations = [1000, 2000, 5000, 10000];
     }
-    validate(): boolean {
+    validate(serial: string, denomination: number): boolean {
+        if (!this.validDenominations.includes(denomination)) {
+            return false;
+        }
         return true
     }
 }
