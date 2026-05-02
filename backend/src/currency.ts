@@ -4,7 +4,7 @@ abstract class Currency {
     constructor(public readonly code: string) { }
 
     abstract validate(serial: string, denomination: number): boolean
-    validDenominations: number[] = [];
+    protected validDenominations: number[] = [];
 }
 
 export class EUR extends Currency {
