@@ -56,6 +56,8 @@ const server = Bun.serve({
                     }, { status: 400 })
                 }
 
+                note.currency = note.currency.toUpperCase()
+
                 switch (note.currency) {
                     case "EUR":
                         const eur = new EUR()
