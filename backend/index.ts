@@ -54,9 +54,7 @@ const server = Bun.serve({
                     }, { status: 400 })
                 }
 
-                const existingNote = db
-                    .query("SELECT 1 FROM notes WHERE serial = ? AND denomination = ?")
-                    .get(note.serial, denomination);
+                const existingNote = db.query("SELECT 1 FROM notes WHERE serial = ? AND denomination = ?").get(note.serial, denomination);
 
                 if (existingNote) {
                     return Response.json(<ErrorResponse>{
