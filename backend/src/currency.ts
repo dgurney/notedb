@@ -3,15 +3,21 @@ import { digitalRoot } from "./helpers";
 abstract class Currency {
     constructor(public readonly code: string) { }
 
-    abstract validate(serial: string): boolean
+    abstract validate(serial: string, denomination: number): boolean
+    validDenominations: number[] = [];
 }
 
 export class EUR extends Currency {
     constructor() {
-        super("EUR")
+        super("EUR");
+        this.validDenominations = [5, 10, 20, 50, 100, 200]; // no 500 since we don't support non-europa notes (yet)
     }
-    validate(serial: string): boolean {
+    validate(serial: string, denomination: number): boolean {
         // TODO support old non-europa series notes if needed
+
+        if (!this.validDenominations.includes(denomination)) {
+            return false;
+        }
 
         const normalisedSerial = serial.toUpperCase();
 

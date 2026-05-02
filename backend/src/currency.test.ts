@@ -14,11 +14,19 @@ describe("EUR validation", () => {
         "RR3223530574",
         "VD2328660593",
     ])("accepts valid Europa-series serial %s", (serial) => {
-        expect(eur.validate(serial)).toBe(true);
+        expect(eur.validate(serial, 10)).toBe(true);
     });
 
     it("accepts lowercase input", () => {
-        expect(eur.validate("pa8124161759")).toBe(true);
+        expect(eur.validate("pa8124161759", 10)).toBe(true);
+    });
+
+    it.each([5, 10, 20, 50, 100, 200])("accepts supported denomination %i", (denomination) => {
+        expect(eur.validate("PA8124161759", denomination)).toBe(true);
+    });
+
+    it.each([1, 2, 500, 1000])("rejects unsupported denomination %i", (denomination) => {
+        expect(eur.validate("PA8124161759", denomination)).toBe(false);
     });
 
     it.each([
@@ -32,6 +40,6 @@ describe("EUR validation", () => {
         { serial: "QA8124161759", reason: "Q is not assigned a first-letter control value" },
         { serial: "PA8124161758", reason: "checksum digit sequence does not match P's control value" },
     ])("rejects $serial because $reason", ({ serial }) => {
-        expect(eur.validate(serial)).toBe(false);
+        expect(eur.validate(serial, 10)).toBe(false);
     });
 });

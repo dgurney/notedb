@@ -59,15 +59,16 @@ const server = Bun.serve({
                 note.currency = note.currency.toUpperCase()
 
                 switch (note.currency) {
-                    case "EUR":
-                        const eur = new EUR()
-                        const valid = eur.validate(note.serial)
+                    case "EUR": {
+                        const currency = new EUR();
+                        const valid = currency.validate(note.serial, note.denomination);
                         if (!valid) {
                             return Response.json(<ErrorResponse>{
-                                error: `serial is not valid for ${eur.code}`
-                            }, { status: 400 })
+                                error: `note is not a valid ${currency.code} note`
+                            }, { status: 400 });
                         }
                         break;
+                    }
                 }
 
                 const existingNote = db.query("SELECT 1 FROM notes WHERE serial = ? AND currency = ?").get(note.serial, currency);
