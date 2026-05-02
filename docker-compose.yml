@@ -1,0 +1,16 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_PATH: /data/notes.db
+    volumes:
+      - notes-db:/data
+    restart: unless-stopped
+
+volumes:
+  notes-db:

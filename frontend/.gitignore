@@ -1,0 +1,14 @@
+node_modules/
+
+output.csv
+
+notes/*
+!notes/.gitkeep
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+dist/
+coverage/

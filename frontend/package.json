@@ -1,0 +1,16 @@
+{
+  "name": "sorter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ocr": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@lmstudio/sdk": "^1.0.4",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
