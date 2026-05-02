@@ -1,7 +1,8 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { ErrorResponse, Note } from "./types";
+import type { Note, ErrorResponse } from "./types";
+
 
 // not very robust but good enough for our needs
 const dbPath = process.env.DB_PATH ?? "notes.db";

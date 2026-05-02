@@ -2,7 +2,7 @@ import { LMStudioClient } from "@lmstudio/sdk";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import type { ErrorResponse, Note } from "../../backend/types";
+import type { ErrorResponse, Note } from "../../backend/src/types";
 
 const MODEL_FAMILY = "zai-org/glm-4.6v-flash";
 const NOTES_DIR = path.join(process.cwd(), "notes");
