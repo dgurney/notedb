@@ -9,3 +9,8 @@ export interface ErrorResponse {
     error: string;
     code?: string;
 }
+
+export enum CurrencyCode {
+    EUR = "EUR",
+    JPY = "JPY"
+}

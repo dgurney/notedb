@@ -1,7 +1,8 @@
 import { digitalRoot } from "./helpers";
+import { CurrencyCode } from "./types";
 
 abstract class Currency {
-    constructor(public readonly code: string) { }
+    constructor(public readonly code: CurrencyCode) { }
 
     abstract validate(serial: string, denomination: number): boolean
     protected validDenominations: number[] = [];
@@ -9,7 +10,7 @@ abstract class Currency {
 
 export class EUR extends Currency {
     constructor() {
-        super("EUR");
+        super(CurrencyCode.EUR);
         this.validDenominations = [5, 10, 20, 50, 100, 200]; // no 500 since we don't support non-europa notes (yet)
     }
     validate(serial: string, denomination: number): boolean {
@@ -84,7 +85,7 @@ export class EUR extends Currency {
 
 export class JPY extends Currency {
     constructor() {
-        super("JPY");
+        super(CurrencyCode.JPY);
         this.validDenominations = [1000, 2000, 5000, 10000];
     }
     validate(serial: string, denomination: number): boolean {
