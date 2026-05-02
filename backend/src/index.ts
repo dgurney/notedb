@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Note, ErrorResponse } from "./types";
+import { EUR } from "./currency";
 
 
 // not very robust but good enough for our needs
@@ -53,6 +54,18 @@ const server = Bun.serve({
                     return Response.json(<ErrorResponse>{
                         error: "serial cannot be empty"
                     }, { status: 400 })
+                }
+
+                switch (note.currency) {
+                    case "EUR":
+                        const eur = new EUR()
+                        const valid = eur.validate(note.serial)
+                        if (!valid) {
+                            return Response.json(<ErrorResponse>{
+                                error: `serial is not valid for ${eur.code}`
+                            }, { status: 400 })
+                        }
+                        break;
                 }
 
                 const existingNote = db.query("SELECT 1 FROM notes WHERE serial = ? AND currency = ?").get(note.serial, currency);
