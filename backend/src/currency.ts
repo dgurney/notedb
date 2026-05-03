@@ -111,3 +111,30 @@ export class JPY extends Currency {
         return true;
     }
 }
+
+export class USD extends Currency {
+    constructor() {
+        super(CurrencyCode.USD)
+        this.validDenominations = [1, 2, 5, 10, 20, 50, 100];
+    }
+    validate(serial: string, denomination: number): boolean {
+        if (!this.validDenominations.includes(denomination)) {
+            return false;
+        }
+
+        const normalisedSerial = serial.toUpperCase();
+
+        const oldRegex = /^([A-L])([0-9]{8})([A-NP-Y*])$/;
+        const redesignedRegex = /^([A-Z][A-L])([0-9]{8})([A-NP-Y*])$/;
+        const serialMatch = denomination <= 2 ? oldRegex.exec(normalisedSerial) : redesignedRegex.exec(normalisedSerial) || oldRegex.exec(normalisedSerial);
+        if (!serialMatch) {
+            return false
+        }
+        const digits = parseInt(serialMatch[2]!, 10);
+        if (digits < 1 || digits > 99999999) {
+            return false;
+        }
+
+        return true
+    }
+}

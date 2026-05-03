@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EUR, JPY } from "./currency";
+import { EUR, JPY, USD } from "./currency";
 
 describe("EUR validation", () => {
     const eur = new EUR();
@@ -99,5 +99,51 @@ describe("JPY validation", () => {
         { denomination: 2000, serial: "SO815862T", reason: "O is not used in JPY serial letters" },
     ])("rejects $serial for $denomination yen because $reason", ({ denomination, serial }) => {
         expect(jpy.validate(serial, denomination)).toBe(false);
+    });
+});
+
+describe("USD validation", () => {
+    const usd = new USD();
+
+    it.each([
+        { denomination: 1, serial: "A23456789A" },
+        { denomination: 1, serial: "F01611835*" },
+        { denomination: 2, serial: "E23456789A" },
+        { denomination: 5, serial: "I23456789A" },
+        { denomination: 5, serial: "BA23456789A" },
+        { denomination: 100, serial: "AG23456789A" },
+    ])("accepts observed online $denomination dollar serial $serial", ({ denomination, serial }) => {
+        expect(usd.validate(serial, denomination)).toBe(true);
+    });
+
+    it("accepts lowercase input", () => {
+        expect(usd.validate("a23456789a", 1)).toBe(true);
+    });
+
+    it.each([1, 2, 5, 10, 20, 50, 100])("accepts supported denomination %i", (denomination) => {
+        const serial = denomination <= 2 ? "A23456789A" : "BA23456789A";
+        expect(usd.validate(serial, denomination)).toBe(true);
+    });
+
+    it.each([0, 3, 25, 500, 1000])("rejects unsupported denomination %i", (denomination) => {
+        expect(usd.validate("A23456789A", denomination)).toBe(false);
+    });
+
+    it.each([
+        { denomination: 1, serial: "", reason: "empty input is not a serial" },
+        { denomination: 1, serial: "A2345678A", reason: "numeric portion is too short" },
+        { denomination: 1, serial: "A234567890A", reason: "numeric portion is too long" },
+        { denomination: 1, serial: "M23456789A", reason: "first letter must identify an A-L Federal Reserve Bank" },
+        { denomination: 1, serial: "A23456789O", reason: "O is not used as a suffix letter" },
+        { denomination: 1, serial: "A23456789Z", reason: "Z is reserved for test printings" },
+        { denomination: 1, serial: "BA23456789A", reason: "$1 and $2 notes do not use the redesigned two-letter prefix" },
+        { denomination: 5, serial: "BM23456789A", reason: "second redesigned prefix letter must identify an A-L Federal Reserve Bank" },
+        { denomination: 5, serial: "BA00000000A", reason: "00000000 is below the valid serial range" },
+        { denomination: 5, serial: "IG00000000T", reason: "official specimen display serial uses an invalid all-zero range" },
+        { denomination: 5, serial: "BA23456789O", reason: "O is not used as a suffix letter" },
+        { denomination: 100, serial: "JB00000000T", reason: "official specimen display serial uses an invalid all-zero range" },
+        { denomination: 100, serial: "JB000000000T", reason: "numeric portion is too long" },
+    ])("rejects $serial for $denomination dollars because $reason", ({ denomination, serial }) => {
+        expect(usd.validate(serial, denomination)).toBe(false);
     });
 });

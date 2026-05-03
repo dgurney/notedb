@@ -12,5 +12,6 @@ export interface ErrorResponse {
 
 export enum CurrencyCode {
     EUR = "EUR",
-    JPY = "JPY"
+    JPY = "JPY",
+    USD = "USD"
 }
