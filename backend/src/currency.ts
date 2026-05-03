@@ -100,7 +100,7 @@ export class JPY extends Currency {
         // probably only needed for 2000 yen banknotes, unlikely we would encounter any other old serial number notes at this time. can be made unconditional later if needed.
         const jpyOldRegex = /^([ABCDEFGHJKLMNPQRSTUVWXYZ]{1,2})(\d{6})([ABCDEFGHJKLMNPQRSTUVWXYZ]{1})$/
         const serialMatch = denomination !== 2000 ? jpyRegex.exec(normalisedSerial) : jpyOldRegex.exec(normalisedSerial);
-        if (serialMatch?.length != 4) {
+        if (!serialMatch) {
             return false
         }
         const digits = parseInt(serialMatch[2]!, 10);
