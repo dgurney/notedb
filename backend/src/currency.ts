@@ -92,6 +92,22 @@ export class JPY extends Currency {
         if (!this.validDenominations.includes(denomination)) {
             return false;
         }
-        return true
+
+        const normalisedSerial = serial.toUpperCase();
+
+        // https://www.npb.go.jp/en/products/intro/faq.html
+        const jpyRegex = /^([ABCDEFGHJKLMNPQRSTUVWXYZ]{2})(\d{6})([ABCDEFGHJKLMNPQRSTUVWXYZ]{2})$/
+        // probably only needed for 2000 yen banknotes, unlikely we would encounter any other old serial number notes at this time. can be made unconditional later if needed.
+        const jpyOldRegex = /^([ABCDEFGHJKLMNPQRSTUVWXYZ]{1,2})(\d{6})([ABCDEFGHJKLMNPQRSTUVWXYZ]{1})$/
+        const serialMatch = denomination !== 2000 ? jpyRegex.exec(normalisedSerial) : jpyOldRegex.exec(normalisedSerial);
+        if (serialMatch?.length != 4) {
+            return false
+        }
+        const digits = parseInt(serialMatch[2]!, 10);
+        if (digits < 1 || digits > 900000) {
+            return false;
+        }
+
+        return true;
     }
 }

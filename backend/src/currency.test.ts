@@ -47,11 +47,57 @@ describe("EUR validation", () => {
 describe("JPY validation", () => {
     const jpy = new JPY();
 
-    it.each([1000, 2000, 5000, 10000])("accepts supported denomination %i", (denomination) => {
-        expect(jpy.validate("", denomination)).toBe(true);
+    it.each([
+        { denomination: 1000, serial: "AA037730LS" },
+        { denomination: 1000, serial: "AA540045MS" },
+        { denomination: 1000, serial: "AA506605KS" },
+        { denomination: 5000, serial: "AA431134VL" },
+        { denomination: 5000, serial: "AA350053VL" },
+        { denomination: 5000, serial: "AA391193TK" },
+        { denomination: 10000, serial: "AA161373AH" },
+    ])("accepts valid Series-F $denomination yen serial $serial", ({ denomination, serial }) => {
+        expect(jpy.validate(serial, denomination)).toBe(true);
+    });
+
+    it.each([
+        "SA815862T",
+        "A069406A",
+        "Z815962A",
+        "AA495803A",
+    ])("accepts valid Series-D 2000 yen serial %s", (serial) => {
+        expect(jpy.validate(serial, 2000)).toBe(true);
+    });
+
+    it.each([
+        { denomination: 1000, serial: "AA037730LS" },
+        { denomination: 2000, serial: "SA815862T" },
+        { denomination: 5000, serial: "AA431134VL" },
+        { denomination: 10000, serial: "AA161373AH" },
+    ])("accepts supported denomination $denomination with a valid serial", ({ denomination, serial }) => {
+        expect(jpy.validate(serial, denomination)).toBe(true);
     });
 
     it.each([1, 5, 10, 100, 500, 3000, 20000])("rejects unsupported denomination %i", (denomination) => {
-        expect(jpy.validate("", denomination)).toBe(false);
+        expect(jpy.validate("AA161373AH", denomination)).toBe(false);
+    });
+
+    it.each([
+        { denomination: 1000, serial: "", reason: "empty input is not a serial" },
+        { denomination: 1000, serial: "AA161373AHH", reason: "too long for a Series-F serial" },
+        { denomination: 1000, serial: "A161373AH", reason: "missing the second leading letter" },
+        { denomination: 1000, serial: "AA16137AH", reason: "numeric portion is too short" },
+        { denomination: 1000, serial: "AA161373A", reason: "missing the second trailing letter" },
+        { denomination: 1000, serial: "IA161373AH", reason: "I is not used in JPY serial letters" },
+        { denomination: 1000, serial: "OA161373AH", reason: "O is not used in JPY serial letters" },
+        { denomination: 1000, serial: "AA000000AH", reason: "000000 is below the valid serial range" },
+        { denomination: 1000, serial: "AA900001AH", reason: "900001 is above the valid serial range" },
+        { denomination: 1000, serial: "SA815862T", reason: "old Series-D serial format is only accepted for 2000 yen notes" },
+        { denomination: 2000, serial: "AA161373AH", reason: "Series-F serial format is not accepted for Series-D 2000 yen notes" },
+        { denomination: 2000, serial: "SA000000T", reason: "000000 is below the valid serial range" },
+        { denomination: 2000, serial: "SA900001T", reason: "900001 is above the valid serial range" },
+        { denomination: 2000, serial: "SI815862T", reason: "I is not used in JPY serial letters" },
+        { denomination: 2000, serial: "SO815862T", reason: "O is not used in JPY serial letters" },
+    ])("rejects $serial for $denomination yen because $reason", ({ denomination, serial }) => {
+        expect(jpy.validate(serial, denomination)).toBe(false);
     });
 });
