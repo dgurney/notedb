@@ -7,7 +7,7 @@
     "ocr": "bun run src/index.ts"
   },
   "dependencies": {
-    "@lmstudio/sdk": "^1.0.4",
+    "@lmstudio/sdk": "^1.5.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
