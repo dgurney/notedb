@@ -98,6 +98,27 @@ const server = Bun.serve({
                 return Response.json({ note }, { status: 201 })
             }
         },
+        "/:serial": {
+            DELETE: req => {
+                const serial = req.params.serial.trim();
+
+                if (serial === "") {
+                    return Response.json(<ErrorResponse>{
+                        error: "serial cannot be empty"
+                    }, { status: 400 })
+                }
+
+                const result = db.query("DELETE FROM notes WHERE serial = ?").run(serial);
+
+                if (result.changes === 0) {
+                    return Response.json(<ErrorResponse>{
+                        error: `note ${serial} not found`
+                    }, { status: 404 })
+                }
+
+                return new Response(null, { status: 204 })
+            }
+        },
     },
     error(error) {
         return Response.json(<ErrorResponse>{
