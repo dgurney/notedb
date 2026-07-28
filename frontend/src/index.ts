@@ -7,7 +7,7 @@ import type { ErrorResponse, Note } from "../../backend/src/types";
 const MODEL_FAMILY = "zai-org/glm-4.6v-flash";
 const NOTES_DIR = path.join(process.cwd(), "notes");
 const SUPPORTED_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg"]);
-const SYSTEM_PROMPT = `You are an expert money sorter who is most familiar with EUR and JPY. Your job is to look at the provided image, and identify the following information from it:
+const SYSTEM_PROMPT = `You are an expert money sorter. Your job is to look at the provided image, and identify the following information from it:
 - currency (ISO 4217 currency code)
 - denomination
 - Serial number
