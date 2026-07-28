@@ -2,7 +2,7 @@ import { LMStudioClient } from "@lmstudio/sdk";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import type { ErrorResponse, Note } from "../../backend/src/types";
+import type { CreateNoteInput, ErrorResponse, Note } from "../../backend/src/types";
 
 const MODEL_FAMILY = "zai-org/glm-4.6v-flash";
 const NOTES_DIR = path.join(process.cwd(), "notes");
@@ -14,11 +14,21 @@ const SYSTEM_PROMPT = `You are an expert money sorter. Your job is to look at th
 
 The user is not interacting with you directly, so you cannot ask any followup questions, and you must not say anything extraneous apart from the JSON output.`;
 
-const noteSchema: z.ZodType<Note> = z.object({
+const createNoteSchema = z.object({
   currency: z.string().length(3),
   denomination: z.number().int().positive(),
   serial: z.string(),
+}) satisfies z.ZodType<CreateNoteInput>;
+const createNoteJsonSchema = z.toJSONSchema(createNoteSchema, { target: "draft-07" });
+const noteSchema = createNoteSchema.extend({
+  created: z.string(),
+}) satisfies z.ZodType<Note>;
+const createNoteResponseSchema = z.object({
+  note: noteSchema,
 });
+const errorResponseSchema = z.object({
+  error: z.string(),
+}) satisfies z.ZodType<ErrorResponse>;
 
 type CliOptions = {
   host: string;
@@ -27,7 +37,7 @@ type CliOptions = {
 
 type CreateNoteResult =
   | { status: "created"; note: Note }
-  | { status: "duplicate"; note: Note; message: string };
+  | { status: "duplicate"; note: CreateNoteInput };
 
 function matchesModel(value: string | undefined): boolean {
   return value?.toLowerCase().includes(MODEL_FAMILY.toLowerCase()) ?? false;
@@ -38,23 +48,17 @@ function parseCliOptions(argv: string[]): CliOptions {
     host: "localhost",
     port: 3000,
   };
-  const positionals: string[] = [];
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
-    if (arg === "--host" || arg === "--host") {
+    if (arg === "--host") {
       const value = argv[index + 1];
       if (!value) {
         throw new Error(`${arg} requires a value`);
       }
       options.host = value;
       index += 1;
-      continue;
-    }
-
-    if (arg.startsWith("--host=")) {
-      options.host = arg.slice("--host=".length);
       continue;
     }
 
@@ -78,19 +82,7 @@ function parseCliOptions(argv: string[]): CliOptions {
       continue;
     }
 
-    positionals.push(arg);
-  }
-
-  if (positionals[0]) {
-    options.host = positionals[0];
-  }
-
-  if (positionals[1]) {
-    options.port = parsePort(positionals[1]);
-  }
-
-  if (positionals.length > 2) {
-    throw new Error(`Unexpected arguments: ${positionals.slice(2).join(" ")}`);
+    throw new Error(`Unexpected argument: ${arg}`);
   }
 
   if (options.host.trim().length === 0) {
@@ -149,7 +141,7 @@ async function resolveModel(client: LMStudioClient) {
   return client.llm.model(downloadedMatch.path);
 }
 
-async function extractNote(client: LMStudioClient, model: Awaited<ReturnType<LMStudioClient["llm"]["model"]>> | Awaited<ReturnType<LMStudioClient["llm"]["listLoaded"]>>[number], imagePath: string): Promise<Note> {
+async function extractNote(client: LMStudioClient, model: Awaited<ReturnType<LMStudioClient["llm"]["model"]>> | Awaited<ReturnType<LMStudioClient["llm"]["listLoaded"]>>[number], imagePath: string): Promise<CreateNoteInput> {
   const image = await client.files.prepareImage(imagePath);
 
   const result = await model.respond(
@@ -161,19 +153,25 @@ async function extractNote(client: LMStudioClient, model: Awaited<ReturnType<LMS
       },
     ],
     {
-      structured: noteSchema,
-      maxTokens: 200,
+      structured: {
+        type: "json",
+        jsonSchema: createNoteJsonSchema,
+      },
+      maxTokens: 2_048,
     },
   );
 
+  const parsed: unknown = JSON.parse(result.nonReasoningContent);
+  const note = createNoteSchema.parse(parsed);
+
   return {
-    ...result.parsed,
-    currency: result.parsed.currency.toUpperCase(),
-    serial: result.parsed.serial.trim(),
+    ...note,
+    currency: note.currency.toUpperCase(),
+    serial: note.serial.trim(),
   };
 }
 
-async function createNote(baseUrl: URL, note: Note): Promise<CreateNoteResult> {
+async function createNote(baseUrl: URL, note: CreateNoteInput): Promise<CreateNoteResult> {
   const response = await fetch(baseUrl, {
     method: "POST",
     headers: {
@@ -181,23 +179,27 @@ async function createNote(baseUrl: URL, note: Note): Promise<CreateNoteResult> {
     },
     body: JSON.stringify(note),
   });
-  const body = await response.json() as { note?: Note } | ErrorResponse;
+  const body: unknown = await response.json();
 
   if (!response.ok) {
-    const message = "error" in body ? body.error : response.statusText;
-
-    if (response.status === 409) {
-      return { status: "duplicate", note, message };
+    const result = errorResponseSchema.safeParse(body);
+    if (!result.success) {
+      throw new Error(`Backend returned an unexpected error response for ${note.serial}`);
     }
 
-    throw new Error(`Backend rejected ${note.serial}: ${message}`);
+    if (response.status === 409) {
+      return { status: "duplicate", note };
+    }
+
+    throw new Error(`Backend rejected ${note.serial}: ${result.data.error}`);
   }
 
-  if (!("note" in body) || !body.note) {
+  const result = createNoteResponseSchema.safeParse(body);
+  if (!result.success) {
     throw new Error(`Backend returned an unexpected response for ${note.serial}`);
   }
 
-  return { status: "created", note: body.note };
+  return { status: "created", note: result.data.note };
 }
 
 async function main() {
@@ -212,7 +214,7 @@ async function main() {
   const client = new LMStudioClient();
   const model = await resolveModel(client);
   const notes: Note[] = [];
-  const duplicates: Note[] = [];
+  const duplicates: CreateNoteInput[] = [];
 
   for (const imagePath of imagePaths) {
     const note = await extractNote(client, model, imagePath);

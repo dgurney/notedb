@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@lmstudio/sdk": "^1.5.0",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bun": "latest"
