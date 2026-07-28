@@ -1,6 +1,6 @@
 # notedb
 
-`notedb` is a tool I made for my own purposes, with the primary goal of learning to use Bun for backend development. 
+`notedb` is a banknote database I made for my own purposes, with the primary goal of learning to use Bun for backend development. 
 
 Europa-series EUR, JPY, and USD banknotes are currently supported with validation.
 
