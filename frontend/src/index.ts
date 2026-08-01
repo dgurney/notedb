@@ -39,11 +39,34 @@ type CreateNoteResult =
   | { status: "created"; note: Note }
   | { status: "duplicate"; note: CreateNoteInput };
 
-function matchesModel(value: string | undefined): boolean {
-  return value?.toLowerCase().includes(MODEL_FAMILY.toLowerCase()) ?? false;
+type ModelReference = {
+  modelKey: string;
+  identifier: string;
+  path: string;
+};
+
+type DownloadedModelReference = {
+  type: string;
+  modelKey: string;
+  path: string;
+  displayName: string;
+};
+
+type ModelResolverClient<Model extends ModelReference> = {
+  llm: {
+    listLoaded(): Promise<Model[]>;
+    model(modelPath: string): Promise<Model>;
+  };
+  system: {
+    listDownloadedModels(): Promise<DownloadedModelReference[]>;
+  };
+};
+
+function matchesModel(value: string): boolean {
+  return value.toLowerCase().includes(MODEL_FAMILY.toLowerCase());
 }
 
-function parseCliOptions(argv: string[]): CliOptions {
+export function parseCliOptions(argv: readonly string[]): CliOptions {
   const options: CliOptions = {
     host: "localhost",
     port: 3000,
@@ -102,24 +125,20 @@ function parsePort(value: string): number {
   return port;
 }
 
-async function getImagePaths(): Promise<string[]> {
-  const entries = await readdir(NOTES_DIR, { withFileTypes: true });
+export async function getImagePaths(notesDir = NOTES_DIR): Promise<string[]> {
+  const entries = await readdir(notesDir, { withFileTypes: true });
 
   return entries
     .filter((entry) => entry.isFile() && SUPPORTED_IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
-    .map((entry) => path.join(NOTES_DIR, entry.name))
+    .map((entry) => path.join(notesDir, entry.name))
     .sort((left, right) => path.basename(left).localeCompare(path.basename(right)));
 }
 
-async function resolveModel(client: LMStudioClient) {
+export async function resolveModel<TModel extends ModelReference>(client: ModelResolverClient<TModel>): Promise<TModel> {
   const loadedModels = await client.llm.listLoaded();
-  const loadedMatch = loadedModels.find((model) => {
-    const modelKey = "modelKey" in model ? String(model.modelKey) : undefined;
-    const identifier = "identifier" in model ? String(model.identifier) : undefined;
-    const pathValue = "path" in model ? String(model.path) : undefined;
-
-    return [modelKey, identifier, pathValue].some(matchesModel);
-  });
+  const loadedMatch = loadedModels.find((model) =>
+    [model.modelKey, model.identifier, model.path].some(matchesModel),
+  );
 
   if (loadedMatch) {
     return loadedMatch;
@@ -161,7 +180,11 @@ async function extractNote(client: LMStudioClient, model: Awaited<ReturnType<LMS
     },
   );
 
-  const parsed: unknown = JSON.parse(result.nonReasoningContent);
+  return parseExtractedNote(result.nonReasoningContent);
+}
+
+export function parseExtractedNote(content: string): CreateNoteInput {
+  const parsed: unknown = JSON.parse(content);
   const note = createNoteSchema.parse(parsed);
 
   return {
@@ -171,7 +194,7 @@ async function extractNote(client: LMStudioClient, model: Awaited<ReturnType<LMS
   };
 }
 
-async function createNote(baseUrl: URL, note: CreateNoteInput): Promise<CreateNoteResult> {
+export async function createNote(baseUrl: URL, note: CreateNoteInput): Promise<CreateNoteResult> {
   const response = await fetch(baseUrl, {
     method: "POST",
     headers: {
@@ -236,8 +259,10 @@ async function main() {
   process.exit(0);
 }
 
-await main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(message);
-  process.exit(1);
-});
+if (import.meta.main) {
+  await main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message);
+    process.exit(1);
+  });
+}
