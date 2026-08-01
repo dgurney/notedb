@@ -134,7 +134,7 @@ export async function getImagePaths(notesDir = NOTES_DIR): Promise<string[]> {
     .sort((left, right) => path.basename(left).localeCompare(path.basename(right)));
 }
 
-export async function resolveModel<TModel extends ModelReference>(client: ModelResolverClient<TModel>): Promise<TModel> {
+export async function resolveModel<Model extends ModelReference>(client: ModelResolverClient<Model>): Promise<Model> {
   const loadedModels = await client.llm.listLoaded();
   const loadedMatch = loadedModels.find((model) =>
     [model.modelKey, model.identifier, model.path].some(matchesModel),
