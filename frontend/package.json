@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "bun build src/index.ts --target=bun --outdir=dist",
+    "test": "bun test",
     "ocr": "bun run src/index.ts"
   },
   "dependencies": {

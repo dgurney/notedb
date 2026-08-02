@@ -129,7 +129,7 @@ describe("notes API", () => {
         const ambiguousResponse = await fetch(new URL(serial, baseUrl), { method: "DELETE" });
         expect(ambiguousResponse.status).toBe(409);
         expect(await ambiguousResponse.json()).toEqual({
-            error: `multiple notes have serial ${serial}; specify currency`,
+            error: `multiple notes have serial ${serial}, specify the currency`,
         });
 
         const deleteEuroResponse = await fetch(new URL(`${serial}?currency=eur`, baseUrl), { method: "DELETE" });
