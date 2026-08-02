@@ -1,4 +1,4 @@
-import { LMStudioClient } from "@lmstudio/sdk";
+import { LMStudioClient, type LLM } from "@lmstudio/sdk";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
@@ -160,7 +160,11 @@ export async function resolveModel<Model extends ModelReference>(client: ModelRe
   return client.llm.model(downloadedMatch.path);
 }
 
-async function extractNote(client: LMStudioClient, model: Awaited<ReturnType<LMStudioClient["llm"]["model"]>> | Awaited<ReturnType<LMStudioClient["llm"]["listLoaded"]>>[number], imagePath: string): Promise<CreateNoteInput> {
+async function extractNote(
+  client: LMStudioClient,
+  model: LLM,
+  imagePath: string,
+): Promise<CreateNoteInput> {
   const image = await client.files.prepareImage(imagePath);
 
   const result = await model.respond(
