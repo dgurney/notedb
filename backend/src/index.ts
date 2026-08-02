@@ -74,17 +74,32 @@ export const server = Bun.serve({
         "/:serial": {
             DELETE: req => {
                 const serial = req.params.serial.trim();
+                const currencyParameter = new URL(req.url).searchParams.get("currency");
+                const currency = currencyParameter?.toUpperCase();
 
                 if (serial === "") {
                     return jsonError("serial cannot be empty", 400);
                 }
 
-                const result = db.query("DELETE FROM notes WHERE serial = ?").run(serial);
+                if (currency !== undefined) {
+                    const result = db.query("DELETE FROM notes WHERE serial = ? AND currency = ?").run(serial, currency);
 
-                if (result.changes === 0) {
-                    return jsonError(`note ${serial} not found`, 404);
+                    if (result.changes === 0) {
+                        return jsonError(`note ${serial} (${currency}) not found`, 404);
+                    }
+
+                    return new Response(null, { status: 204 });
                 }
 
+                const matchingNotes = db.query<{ currency: string }, [string]>("SELECT currency FROM notes WHERE serial = ?").all(serial);
+                if (matchingNotes.length === 0) {
+                    return jsonError(`note ${serial} not found`, 404);
+                }
+                if (matchingNotes.length > 1) {
+                    return jsonError(`multiple notes have serial ${serial}, specify the currency`, 409);
+                }
+
+                db.query("DELETE FROM notes WHERE serial = ? AND currency = ?").run(serial, matchingNotes[0]!.currency);
                 return new Response(null, { status: 204 });
             },
         },

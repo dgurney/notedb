@@ -113,13 +113,19 @@ A successful request returns `201 Created` with the stored note, including its c
 
 Duplicate serial-and-currency pairs return `409 Conflict`. Invalid and unsupported notes return `400 Bad Request`.
 
-### Delete notes by serial
+### Delete a note
 
 ```http
 DELETE /PA8124161759
 ```
 
-Returns `204 No Content` on successful deletion, or `404 Not Found` when the serial does not exist.
+The `currency` query parameter is optional when the serial identifies one note:
+
+```http
+DELETE /PA8124161759?currency=EUR
+```
+
+Returns `204 No Content` on successful deletion or `404 Not Found` when the note does not exist. If multiple notes have the same serial, omitting `currency` returns `409 Conflict` and no notes are deleted.
 
 Errors use the following shape:
 
@@ -152,7 +158,6 @@ bun x tsc --noEmit
 
 - OCR accuracy depends on image quality and the local model. At the time of writing the code it was found that the currently hardcoded `glm-4.6v-flash` model has the best accuracy for this task, even compared to Gemma 4 which was occasionally misreading serial numbers. 
 - Images are currently processed sequentially.
-- Deletion is keyed only by serial number and may remove multiple records sharing that serial (though in practise this is not a current concern).
 
 ## License
 

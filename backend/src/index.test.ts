@@ -1,10 +1,15 @@
 import { afterAll, describe, expect, it } from "vitest";
+import { Database } from "bun:sqlite";
+import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const originalDbPath = process.env.DB_PATH;
 const originalPort = process.env.PORT;
 
-process.env.DB_PATH = ":memory:";
+const testDirectory = mkdtempSync(join(tmpdir(), "notedb-test-"));
+process.env.DB_PATH = join(testDirectory, "notes.db");
 process.env.PORT = String(await findAvailablePort());
 
 const { server } = await import("./index");
@@ -12,6 +17,7 @@ const baseUrl = new URL(`http://localhost:${server.port}/`);
 
 afterAll(() => {
     server.stop(true);
+    rmSync(testDirectory, { recursive: true });
 
     if (originalDbPath === undefined) {
         delete process.env.DB_PATH;
@@ -110,5 +116,26 @@ describe("notes API", () => {
         const missingResponse = await fetch(new URL(serial, baseUrl), { method: "DELETE" });
         expect(missingResponse.status).toBe(404);
         expect(await missingResponse.json()).toEqual({ error: `note ${serial} not found` });
+    });
+
+    it("requires currency to delete an ambiguous serial", async () => {
+        const serial = "SHARED123";
+        const created = new Date().toISOString();
+        const fixtureDb = new Database(process.env.DB_PATH);
+        fixtureDb.query("INSERT INTO notes (serial, currency, denomination, created) VALUES (?, ?, ?, ?)").run(serial, "EUR", 10, created);
+        fixtureDb.query("INSERT INTO notes (serial, currency, denomination, created) VALUES (?, ?, ?, ?)").run(serial, "USD", 10, created);
+        fixtureDb.close();
+
+        const ambiguousResponse = await fetch(new URL(serial, baseUrl), { method: "DELETE" });
+        expect(ambiguousResponse.status).toBe(409);
+        expect(await ambiguousResponse.json()).toEqual({
+            error: `multiple notes have serial ${serial}; specify currency`,
+        });
+
+        const deleteEuroResponse = await fetch(new URL(`${serial}?currency=eur`, baseUrl), { method: "DELETE" });
+        expect(deleteEuroResponse.status).toBe(204);
+
+        const deleteRemainingResponse = await fetch(new URL(serial, baseUrl), { method: "DELETE" });
+        expect(deleteRemainingResponse.status).toBe(204);
     });
 });
