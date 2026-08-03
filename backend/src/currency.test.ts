@@ -14,19 +14,19 @@ describe("EUR serial-format validation", () => {
         "RR3223530574",
         "VD2328660593",
     ])("accepts valid Europa-series serial %s", (serial) => {
-        expect(eur.isSupportedSerialFormat(serial, 10)).toBe(true);
+        expect(eur.validSerial(serial, 10)).toBe(true);
     });
 
     it("accepts lowercase input", () => {
-        expect(eur.isSupportedSerialFormat("pa8124161759", 10)).toBe(true);
+        expect(eur.validSerial("pa8124161759", 10)).toBe(true);
     });
 
     it.each([5, 10, 20, 50, 100, 200])("accepts supported denomination %i", (denomination) => {
-        expect(eur.isSupportedSerialFormat("PA8124161759", denomination)).toBe(true);
+        expect(eur.validSerial("PA8124161759", denomination)).toBe(true);
     });
 
     it.each([1, 2, 500, 1000])("rejects unsupported denomination %i", (denomination) => {
-        expect(eur.isSupportedSerialFormat("PA8124161759", denomination)).toBe(false);
+        expect(eur.validSerial("PA8124161759", denomination)).toBe(false);
     });
 
     it.each([
@@ -40,7 +40,7 @@ describe("EUR serial-format validation", () => {
         { serial: "QA8124161759", reason: "Q is not assigned a first-letter control value" },
         { serial: "PA8124161758", reason: "checksum digit sequence does not match P's control value" },
     ])("rejects $serial because $reason", ({ serial }) => {
-        expect(eur.isSupportedSerialFormat(serial, 10)).toBe(false);
+        expect(eur.validSerial(serial, 10)).toBe(false);
     });
 });
 
@@ -56,7 +56,7 @@ describe("JPY serial-format validation", () => {
         { denomination: 5000, serial: "AA391193TK" },
         { denomination: 10000, serial: "AA161373AH" },
     ])("accepts valid Series-F $denomination yen serial $serial", ({ denomination, serial }) => {
-        expect(jpy.isSupportedSerialFormat(serial, denomination)).toBe(true);
+        expect(jpy.validSerial(serial, denomination)).toBe(true);
     });
 
     it.each([
@@ -65,7 +65,7 @@ describe("JPY serial-format validation", () => {
         "Z815962A",
         "AA495803A",
     ])("accepts valid Series-D 2000 yen serial %s", (serial) => {
-        expect(jpy.isSupportedSerialFormat(serial, 2000)).toBe(true);
+        expect(jpy.validSerial(serial, 2000)).toBe(true);
     });
 
     it.each([
@@ -74,11 +74,11 @@ describe("JPY serial-format validation", () => {
         { denomination: 5000, serial: "AA431134VL" },
         { denomination: 10000, serial: "AA161373AH" },
     ])("accepts supported denomination $denomination with a valid serial", ({ denomination, serial }) => {
-        expect(jpy.isSupportedSerialFormat(serial, denomination)).toBe(true);
+        expect(jpy.validSerial(serial, denomination)).toBe(true);
     });
 
     it.each([1, 5, 10, 100, 500, 3000, 20000])("rejects unsupported denomination %i", (denomination) => {
-        expect(jpy.isSupportedSerialFormat("AA161373AH", denomination)).toBe(false);
+        expect(jpy.validSerial("AA161373AH", denomination)).toBe(false);
     });
 
     it.each([
@@ -98,7 +98,7 @@ describe("JPY serial-format validation", () => {
         { denomination: 2000, serial: "SI815862T", reason: "I is not used in JPY serial letters" },
         { denomination: 2000, serial: "SO815862T", reason: "O is not used in JPY serial letters" },
     ])("rejects $serial for $denomination yen because $reason", ({ denomination, serial }) => {
-        expect(jpy.isSupportedSerialFormat(serial, denomination)).toBe(false);
+        expect(jpy.validSerial(serial, denomination)).toBe(false);
     });
 });
 
@@ -113,20 +113,20 @@ describe("USD serial-format validation", () => {
         { denomination: 5, serial: "BA23456789A" },
         { denomination: 100, serial: "AG23456789A" },
     ])("accepts observed online $denomination dollar serial $serial", ({ denomination, serial }) => {
-        expect(usd.isSupportedSerialFormat(serial, denomination)).toBe(true);
+        expect(usd.validSerial(serial, denomination)).toBe(true);
     });
 
     it("accepts lowercase input", () => {
-        expect(usd.isSupportedSerialFormat("a23456789a", 1)).toBe(true);
+        expect(usd.validSerial("a23456789a", 1)).toBe(true);
     });
 
     it.each([1, 2, 5, 10, 20, 50, 100])("accepts supported denomination %i", (denomination) => {
         const serial = denomination <= 2 ? "A23456789A" : "BA23456789A";
-        expect(usd.isSupportedSerialFormat(serial, denomination)).toBe(true);
+        expect(usd.validSerial(serial, denomination)).toBe(true);
     });
 
     it.each([0, 3, 25, 500, 1000])("rejects unsupported denomination %i", (denomination) => {
-        expect(usd.isSupportedSerialFormat("A23456789A", denomination)).toBe(false);
+        expect(usd.validSerial("A23456789A", denomination)).toBe(false);
     });
 
     it.each([
@@ -144,6 +144,6 @@ describe("USD serial-format validation", () => {
         { denomination: 100, serial: "JB00000000T", reason: "official specimen display serial uses an invalid all-zero range" },
         { denomination: 100, serial: "JB000000000T", reason: "numeric portion is too long" },
     ])("rejects $serial for $denomination dollars because $reason", ({ denomination, serial }) => {
-        expect(usd.isSupportedSerialFormat(serial, denomination)).toBe(false);
+        expect(usd.validSerial(serial, denomination)).toBe(false);
     });
 });

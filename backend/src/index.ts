@@ -1,5 +1,5 @@
 import { openDatabase } from "./database";
-import { getSerialFormatValidationError, parseCreateNoteInput } from "./validation";
+import { validateNote, parseCreateNoteInput } from "./validation";
 import type { ErrorResponse, Note } from "./types";
 
 const dbPath = process.env.DB_PATH ?? "notes.db";
@@ -33,7 +33,7 @@ export const server = Bun.serve({
 
                 const noteInput = parsed.note;
                 const created = new Date().toISOString();
-                const validationError = getSerialFormatValidationError(noteInput);
+                const validationError = validateNote(noteInput);
                 if (validationError) {
                     return jsonError(validationError, 400);
                 }

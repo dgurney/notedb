@@ -4,7 +4,7 @@ import type { CreateNoteInput } from "./types";
 
 type CurrencyValidator = {
     readonly code: CurrencyCode;
-    isSupportedSerialFormat(serial: string, denomination: number): boolean;
+    validSerial(serial: string, denomination: number): boolean;
 };
 
 type ParseCreateNoteResult =
@@ -50,14 +50,14 @@ export function parseCreateNoteInput(value: unknown): ParseCreateNoteResult {
     };
 }
 
-export function getSerialFormatValidationError(note: CreateNoteInput): string | undefined {
+export function validateNote(note: CreateNoteInput): string | undefined {
     const validator = currencyValidators.get(note.currency);
 
     if (!validator) {
         return `currency ${note.currency} is not supported`;
     }
 
-    if (!validator.isSupportedSerialFormat(note.serial, note.denomination)) {
+    if (!validator.validSerial(note.serial, note.denomination)) {
         return `${note.serial} is not a supported ${validator.code} serial format for denomination ${note.denomination}`;
     }
 }

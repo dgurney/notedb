@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { getSerialFormatValidationError, parseCreateNoteInput } from "./validation";
+import { validateNote, parseCreateNoteInput } from "./validation";
 
 describe("create-note input parsing", () => {
     it.each([
@@ -41,7 +41,7 @@ describe("create-note input parsing", () => {
 
 describe("supported serial-format validation", () => {
     it("rejects unsupported currencies", () => {
-        expect(getSerialFormatValidationError({
+        expect(validateNote({
             currency: "GBP",
             denomination: 10,
             serial: "PA8124161759",
@@ -49,7 +49,7 @@ describe("supported serial-format validation", () => {
     });
 
     it("accepts supported serial formats", () => {
-        expect(getSerialFormatValidationError({
+        expect(validateNote({
             currency: "EUR",
             denomination: 10,
             serial: "PA8124161759",
