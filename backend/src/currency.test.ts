@@ -22,11 +22,11 @@ describe("EUR serial-format validation", () => {
     });
 
     it.each([5, 10, 20, 50, 100, 200])("accepts supported denomination %i", (denomination) => {
-        expect(eur.validSerial("PA8124161759", denomination)).toBe(true);
+        expect(eur.validDenomination(denomination)).toBe(true);
     });
 
     it.each([1, 2, 500, 1000])("rejects unsupported denomination %i", (denomination) => {
-        expect(eur.validSerial("PA8124161759", denomination)).toBe(false);
+        expect(eur.validDenomination(denomination)).toBe(false);
     });
 
     it.each([
@@ -74,11 +74,11 @@ describe("JPY serial-format validation", () => {
         { denomination: 5000, serial: "AA431134VL" },
         { denomination: 10000, serial: "AA161373AH" },
     ])("accepts supported denomination $denomination with a valid serial", ({ denomination, serial }) => {
-        expect(jpy.validSerial(serial, denomination)).toBe(true);
+        expect(jpy.validDenomination(denomination)).toBe(true);
     });
 
     it.each([1, 5, 10, 100, 500, 3000, 20000])("rejects unsupported denomination %i", (denomination) => {
-        expect(jpy.validSerial("AA161373AH", denomination)).toBe(false);
+        expect(jpy.validDenomination(denomination)).toBe(false);
     });
 
     it.each([
@@ -121,12 +121,11 @@ describe("USD serial-format validation", () => {
     });
 
     it.each([1, 2, 5, 10, 20, 50, 100])("accepts supported denomination %i", (denomination) => {
-        const serial = denomination <= 2 ? "A23456789A" : "BA23456789A";
-        expect(usd.validSerial(serial, denomination)).toBe(true);
+        expect(usd.validDenomination(denomination)).toBe(true);
     });
 
     it.each([0, 3, 25, 500, 1000])("rejects unsupported denomination %i", (denomination) => {
-        expect(usd.validSerial("A23456789A", denomination)).toBe(false);
+        expect(usd.validDenomination(denomination)).toBe(false);
     });
 
     it.each([

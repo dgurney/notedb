@@ -55,4 +55,12 @@ describe("supported serial-format validation", () => {
             serial: "PA8124161759",
         })).toBeUndefined();
     });
+
+    it("rejects unsupported denominations before checking the serial format", () => {
+        expect(validateNote({
+            currency: "EUR",
+            denomination: 1,
+            serial: "not a serial",
+        })).toBe("denomination 1 is not supported for EUR");
+    });
 });

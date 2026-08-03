@@ -4,6 +4,7 @@ import type { CreateNoteInput } from "./types";
 
 type CurrencyValidator = {
     readonly code: CurrencyCode;
+    validDenomination(denomination: number): boolean;
     validSerial(serial: string, denomination: number): boolean;
 };
 
@@ -55,6 +56,10 @@ export function validateNote(note: CreateNoteInput): string | undefined {
 
     if (!validator) {
         return `currency ${note.currency} is not supported`;
+    }
+
+    if (!validator.validDenomination(note.denomination)) {
+        return `denomination ${note.denomination} is not supported for ${validator.code}`;
     }
 
     if (!validator.validSerial(note.serial, note.denomination)) {

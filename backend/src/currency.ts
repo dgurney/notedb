@@ -28,22 +28,23 @@ const EUROPA_CONTROL_VALUES: Partial<Record<string, number>> = {
 };
 
 abstract class Currency {
-    constructor(public readonly code: CurrencyCode) { }
+    constructor(
+        public readonly code: CurrencyCode,
+        private readonly validDenominations: readonly [number, ...number[]],
+    ) { }
 
     abstract validSerial(serial: string, denomination: number): boolean;
-    protected validDenominations: number[] = [];
+
+    validDenomination(denomination: number): boolean {
+        return this.validDenominations.includes(denomination);
+    }
 }
 
 export class EUR extends Currency {
     constructor() {
-        super(CurrencyCode.EUR);
-        this.validDenominations = [5, 10, 20, 50, 100, 200];
+        super(CurrencyCode.EUR, [5, 10, 20, 50, 100, 200]);
     }
-    validSerial(serial: string, denomination: number): boolean {
-        if (!this.validDenominations.includes(denomination)) {
-            return false;
-        }
-
+    validSerial(serial: string, _denomination: number): boolean {
         const normalisedSerial = serial.toUpperCase();
         const europaSimpleMatch = /^([a-zA-Z]{2})(\d{10})$/;
         if (!europaSimpleMatch.test(normalisedSerial)) {
@@ -76,14 +77,9 @@ export class EUR extends Currency {
 
 export class JPY extends Currency {
     constructor() {
-        super(CurrencyCode.JPY);
-        this.validDenominations = [1000, 2000, 5000, 10000];
+        super(CurrencyCode.JPY, [1000, 2000, 5000, 10000]);
     }
     validSerial(serial: string, denomination: number): boolean {
-        if (!this.validDenominations.includes(denomination)) {
-            return false;
-        }
-
         const normalisedSerial = serial.toUpperCase();
 
         // Series F format: https://www.npb.go.jp/en/products/intro/faq.html
@@ -105,14 +101,9 @@ export class JPY extends Currency {
 
 export class USD extends Currency {
     constructor() {
-        super(CurrencyCode.USD)
-        this.validDenominations = [1, 2, 5, 10, 20, 50, 100];
+        super(CurrencyCode.USD, [1, 2, 5, 10, 20, 50, 100])
     }
     validSerial(serial: string, denomination: number): boolean {
-        if (!this.validDenominations.includes(denomination)) {
-            return false;
-        }
-
         const normalisedSerial = serial.toUpperCase();
 
         const oldRegex = /^([A-L])([0-9]{8})([A-NP-Y*])$/;
