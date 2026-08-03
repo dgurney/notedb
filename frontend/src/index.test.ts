@@ -4,7 +4,15 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { createNote, getImagePaths, parseCliOptions, parseExtractedNote, resolveModel } from "./index";
+import {
+  archiveImage,
+  createNote,
+  getImagePaths,
+  parseCliOptions,
+  parseExtractedNote,
+  processImagePaths,
+  resolveModel,
+} from "./index";
 
 const temporaryDirectories: string[] = [];
 
@@ -88,6 +96,80 @@ describe("image discovery", () => {
       path.join(directory, "a.png"),
       path.join(directory, "b.JPG"),
     ]);
+  });
+
+  it("archives processed images without overwriting an existing file", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "notedb-archive-"));
+    temporaryDirectories.push(directory);
+    const imagePath = path.join(directory, "note.jpg");
+    await writeFile(imagePath, "first image");
+
+    const archivedPath = await archiveImage(imagePath);
+    expect(archivedPath).toBe(path.join(directory, "processed", "note.jpg"));
+    expect(await getImagePaths(directory)).toEqual([]);
+
+    await writeFile(imagePath, "second image");
+    expect(archiveImage(imagePath)).rejects.toThrow(
+      `cannot archive note.jpg because ${archivedPath} already exists`,
+    );
+    expect(await getImagePaths(directory)).toEqual([imagePath]);
+  });
+});
+
+describe("image processing", () => {
+  it("archives successful and duplicate images while retaining failures and continuing", async () => {
+    const archived: string[] = [];
+    const processed = await processImagePaths(["created.jpg", "failed.jpg", "duplicate.jpg", "archive-failed.jpg"], {
+      async extract(imagePath) {
+        if (imagePath === "failed.jpg") {
+          throw new Error("model output was invalid");
+        }
+        let serial = "PA8124161759";
+        if (imagePath === "duplicate.jpg") {
+          serial = "EA3388561264";
+        } else if (imagePath === "archive-failed.jpg") {
+          serial = "UB8593576913";
+        }
+        return {
+          currency: "EUR",
+          denomination: 10,
+          serial,
+        };
+      },
+      async create(note) {
+        if (note.serial === "EA3388561264") {
+          return { status: "duplicate", note };
+        }
+        return { status: "created", note: { ...note, created: "2026-08-02T12:00:00.000Z" } };
+      },
+      async archive(imagePath) {
+        if (imagePath === "archive-failed.jpg") {
+          throw new Error("processed destination already exists");
+        }
+        archived.push(imagePath);
+        return `processed/${imagePath}`;
+      },
+    });
+
+    expect(processed).toEqual({
+      created: [{
+        currency: "EUR",
+        denomination: 10,
+        serial: "PA8124161759",
+        created: "2026-08-02T12:00:00.000Z",
+      }, {
+        currency: "EUR",
+        denomination: 10,
+        serial: "UB8593576913",
+        created: "2026-08-02T12:00:00.000Z",
+      }],
+      duplicates: [{ currency: "EUR", denomination: 10, serial: "EA3388561264" }],
+      failures: [
+        { imagePath: "failed.jpg", error: "model output was invalid" },
+        { imagePath: "archive-failed.jpg", error: "processed destination already exists" },
+      ],
+    });
+    expect(archived).toEqual(["created.jpg", "duplicate.jpg"]);
   });
 });
 

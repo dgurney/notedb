@@ -1,5 +1,5 @@
 import { LMStudioClient, type LLM } from "@lmstudio/sdk";
-import { readdir } from "node:fs/promises";
+import { mkdir, readdir, rename } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import type { CreateNoteInput, ErrorResponse, Note } from "../../backend/src/types";
@@ -38,6 +38,23 @@ type CliOptions = {
 type CreateNoteResult =
   | { status: "created"; note: Note }
   | { status: "duplicate"; note: CreateNoteInput };
+
+type ImageProcessingFailure = {
+  imagePath: string;
+  error: string;
+};
+
+type ImageProcessingResult = {
+  created: Note[];
+  duplicates: CreateNoteInput[];
+  failures: ImageProcessingFailure[];
+};
+
+type ImageProcessor = {
+  extract(imagePath: string): Promise<CreateNoteInput>;
+  create(note: CreateNoteInput): Promise<CreateNoteResult>;
+  archive(imagePath: string): Promise<string>;
+};
 
 type ModelReference = {
   modelKey: string;
@@ -132,6 +149,22 @@ export async function getImagePaths(notesDir = NOTES_DIR): Promise<string[]> {
     .filter((entry) => entry.isFile() && SUPPORTED_IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
     .map((entry) => path.join(notesDir, entry.name))
     .sort((left, right) => path.basename(left).localeCompare(path.basename(right)));
+}
+
+export async function archiveImage(
+  imagePath: string,
+  processedDir = path.join(path.dirname(imagePath), "processed"),
+): Promise<string> {
+  await mkdir(processedDir, { recursive: true });
+  const filename = path.basename(imagePath);
+  const existingFilenames = await readdir(processedDir);
+  if (existingFilenames.includes(filename)) {
+    throw new Error(`cannot archive ${filename} because ${path.join(processedDir, filename)} already exists`);
+  }
+
+  const destination = path.join(processedDir, filename);
+  await rename(imagePath, destination);
+  return destination;
 }
 
 export async function resolveModel<Model extends ModelReference>(client: ModelResolverClient<Model>): Promise<Model> {
@@ -229,6 +262,40 @@ export async function createNote(baseUrl: URL, note: CreateNoteInput): Promise<C
   return { status: "created", note: result.data.note };
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export async function processImagePaths(
+  imagePaths: readonly string[],
+  processor: ImageProcessor,
+): Promise<ImageProcessingResult> {
+  const result: ImageProcessingResult = {
+    created: [],
+    duplicates: [],
+    failures: [],
+  };
+
+  for (const imagePath of imagePaths) {
+    try {
+      const note = await processor.extract(imagePath);
+      const createResult = await processor.create(note);
+
+      if (createResult.status === "duplicate") {
+        result.duplicates.push(createResult.note);
+      } else {
+        result.created.push(createResult.note);
+      }
+
+      await processor.archive(imagePath);
+    } catch (error) {
+      result.failures.push({ imagePath, error: getErrorMessage(error) });
+    }
+  }
+
+  return result;
+}
+
 async function main() {
   const options = parseCliOptions(process.argv.slice(2));
   const backendUrl = new URL(`http://${options.host}:${options.port}/`);
@@ -240,33 +307,34 @@ async function main() {
 
   const client = new LMStudioClient();
   const model = await resolveModel(client);
-  const notes: Note[] = [];
-  const duplicates: CreateNoteInput[] = [];
+  const result = await processImagePaths(imagePaths, {
+    extract: (imagePath) => extractNote(client, model, imagePath),
+    create: (note) => createNote(backendUrl, note),
+    archive: (imagePath) => archiveImage(imagePath),
+  });
 
-  for (const imagePath of imagePaths) {
-    const note = await extractNote(client, model, imagePath);
-    const result = await createNote(backendUrl, note);
-
-    if (result.status === "duplicate") {
-      duplicates.push(result.note);
-      console.log(`Skipped existing note ${result.note.serial} (${result.note.currency})`);
-      continue;
-    }
-
-    notes.push(result.note);
+  for (const duplicate of result.duplicates) {
+    console.log(`Skipped existing note ${duplicate.serial} (${duplicate.currency} ${duplicate.denomination})`);
+  }
+  for (const failure of result.failures) {
+    console.error(`Failed to process ${failure.imagePath}: ${failure.error}`);
   }
 
-  console.log(`Created ${notes.length} note${notes.length === 1 ? "" : "s"} in ${backendUrl.toString()}`);
-  if (duplicates.length > 0) {
-    console.log(`Skipped ${duplicates.length} existing note${duplicates.length === 1 ? "" : "s"}.`);
+  console.log(`Created ${result.created.length} note${result.created.length === 1 ? "" : "s"} in ${backendUrl.toString()}`);
+  if (result.duplicates.length > 0) {
+    console.log(`Skipped ${result.duplicates.length} existing note${result.duplicates.length === 1 ? "" : "s"}.`);
+  }
+  if (result.failures.length > 0) {
+    throw new Error(
+      `${result.failures.length} image${result.failures.length === 1 ? "" : "s"} failed and remain in ${NOTES_DIR}`,
+    );
   }
   process.exit(0);
 }
 
 if (import.meta.main) {
   await main().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(message);
+    console.error(getErrorMessage(error));
     process.exit(1);
   });
 }
