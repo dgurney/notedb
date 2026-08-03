@@ -2,11 +2,11 @@
 
 `notedb` is a banknote database I made for my own purposes, with the primary goal of learning to use Bun for backend development. 
 
-Europa-series EUR, JPY, and USD banknotes are currently supported with validation.
+Europa-series EUR, JPY, and USD banknotes are currently supported with denomination and serial-format validation.
 
 ## How it works
 
-The OCR CLI reads banknote images from `frontend/notes`, asks an LLM via LM Studio to identify the currency, denomination, and serial number, then submits the result to the backend. The backend validates supported notes and stores them in SQLite.
+The OCR CLI reads banknote images from `frontend/notes`, asks an LLM via LM Studio to identify the currency, denomination, and serial number, then submits the result to the backend. The backend checks the denomination and serial format for supported currencies and stores the result in SQLite.
 
 ## Project structure
 
@@ -54,6 +54,8 @@ Place `.png`, `.jpg`, or `.jpeg` banknote images in `frontend/notes`, start the 
 bun run ocr
 ```
 
+Successfully processed images, including images of notes already in the database, are moved to `frontend/notes/processed`. Failed images remain in `frontend/notes` for correction or another attempt. The CLI reports each failed filename and continues processing the rest of the batch before exiting with an error.
+
 The CLI submits notes to `http://localhost:3000` by default. To use another backend address:
 
 ```bash
@@ -74,6 +76,8 @@ The backend accepts these environment variables:
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP server port |
 | `DB_PATH` | `notes.db` | SQLite database path |
+
+Any necessary schema updates are applied automatically whenever possible.
 
 ## API
 
@@ -111,21 +115,15 @@ A successful request returns `201 Created` with the stored note, including its c
 }
 ```
 
-Duplicate serial-and-currency pairs return `409 Conflict`. Invalid and unsupported notes return `400 Bad Request`.
+Duplicate serial, currency, and denomination combinations return `409 Conflict`. Invalid and unsupported serial formats or denominations return `400 Bad Request`.
 
 ### Delete a note
 
 ```http
-DELETE /PA8124161759
+DELETE /PA8124161759?currency=EUR&denomination=10
 ```
 
-The `currency` query parameter is optional when the serial identifies one note:
-
-```http
-DELETE /PA8124161759?currency=EUR
-```
-
-Returns `204 No Content` on successful deletion or `404 Not Found` when the note does not exist. If multiple notes have the same serial, omitting `currency` returns `409 Conflict` and no notes are deleted.
+Both `currency` and `denomination` are required together with the serial. Returns `204 No Content` on successful deletion, `404 Not Found` when that exact note does not exist, or `400 Bad Request` when either query parameter is missing or invalid.
 
 Errors use the following shape:
 
@@ -157,6 +155,7 @@ bun x tsc --noEmit
 ## Current limitations
 
 - OCR accuracy depends on image quality and the local model. At the time of writing the code it was found that the currently hardcoded `glm-4.6v-flash` model has the best accuracy for this task, even compared to Gemma 4 which was occasionally misreading serial numbers. 
+- The current validation can reject impossible serial formats and unsupported denominations, but cannot prove a fully correct read if a mistake happens to be technically valid.
 - Images are currently processed sequentially.
 
 ## License
