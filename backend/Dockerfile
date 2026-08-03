@@ -1,4 +1,4 @@
-FROM oven/bun:1 AS builder
+FROM oven/bun:1.3.14 AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ RUN bun build --bytecode --minify --sourcemap \
     --compile \
     ./src/index.ts --outfile=./dist/server
 
-FROM oven/bun:1 AS runner
+FROM oven/bun:1.3.14 AS runner
 
 WORKDIR /app
 
