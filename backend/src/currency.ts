@@ -30,7 +30,7 @@ const EUROPA_CONTROL_VALUES: Partial<Record<string, number>> = {
 abstract class Currency {
     constructor(public readonly code: CurrencyCode) { }
 
-    abstract validate(serial: string, denomination: number): boolean
+    abstract isSupportedSerialFormat(serial: string, denomination: number): boolean
     protected validDenominations: number[] = [];
 }
 
@@ -39,7 +39,7 @@ export class EUR extends Currency {
         super(CurrencyCode.EUR);
         this.validDenominations = [5, 10, 20, 50, 100, 200];
     }
-    validate(serial: string, denomination: number): boolean {
+    isSupportedSerialFormat(serial: string, denomination: number): boolean {
         if (!this.validDenominations.includes(denomination)) {
             return false;
         }
@@ -79,7 +79,7 @@ export class JPY extends Currency {
         super(CurrencyCode.JPY);
         this.validDenominations = [1000, 2000, 5000, 10000];
     }
-    validate(serial: string, denomination: number): boolean {
+    isSupportedSerialFormat(serial: string, denomination: number): boolean {
         if (!this.validDenominations.includes(denomination)) {
             return false;
         }
@@ -108,7 +108,7 @@ export class USD extends Currency {
         super(CurrencyCode.USD)
         this.validDenominations = [1, 2, 5, 10, 20, 50, 100];
     }
-    validate(serial: string, denomination: number): boolean {
+    isSupportedSerialFormat(serial: string, denomination: number): boolean {
         if (!this.validDenominations.includes(denomination)) {
             return false;
         }

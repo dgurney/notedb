@@ -1,25 +1,9 @@
-import { Database } from "bun:sqlite";
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { getCurrencyValidationError, parseCreateNoteInput } from "./note-validation";
+import { openDatabase } from "./database";
+import { getSerialFormatValidationError, parseCreateNoteInput } from "./note-validation";
 import type { ErrorResponse, Note } from "./types";
 
 const dbPath = process.env.DB_PATH ?? "notes.db";
-if (process.env.DB_PATH) {
-    mkdirSync(dirname(dbPath), { recursive: true });
-}
-
-const db = new Database(dbPath);
-db.run(`
-  CREATE TABLE IF NOT EXISTS notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    serial TEXT NOT NULL,
-    currency TEXT NOT NULL,
-    denomination INTEGER NOT NULL,
-    created TEXT NOT NULL,
-    UNIQUE(serial,currency)
-  )
-`);
+const db = openDatabase(dbPath);
 
 function jsonError(error: string, status: number): Response {
     return Response.json({ error } satisfies ErrorResponse, { status });
@@ -49,15 +33,16 @@ export const server = Bun.serve({
 
                 const noteInput = parsed.note;
                 const created = new Date().toISOString();
-                const validationError = getCurrencyValidationError(noteInput);
+                const validationError = getSerialFormatValidationError(noteInput);
                 if (validationError) {
                     return jsonError(validationError, 400);
                 }
 
-                const existingNote = db.query("SELECT 1 FROM notes WHERE serial = ? AND currency = ?").get(noteInput.serial, noteInput.currency);
+                const existingNote = db.query("SELECT 1 FROM notes WHERE serial = ? AND currency = ? AND denomination = ?")
+                    .get(noteInput.serial, noteInput.currency, noteInput.denomination);
 
                 if (existingNote) {
-                    return jsonError(`note ${noteInput.serial} (${noteInput.currency}) already exists`, 409);
+                    return jsonError(`note ${noteInput.serial} (${noteInput.currency} ${noteInput.denomination}) already exists`, 409);
                 }
 
                 db.query("INSERT INTO notes (serial, currency, denomination, created) VALUES (?,?,?,?)").run(
@@ -73,33 +58,32 @@ export const server = Bun.serve({
         },
         "/:serial": {
             DELETE: req => {
-                const serial = req.params.serial.trim();
-                const currencyParameter = new URL(req.url).searchParams.get("currency");
-                const currency = currencyParameter?.toUpperCase();
+                const serial = req.params.serial.trim().toUpperCase();
+                const searchParams = new URL(req.url).searchParams;
+                const currencyParameter = searchParams.get("currency");
+                const denominationParameter = searchParams.get("denomination");
 
                 if (serial === "") {
                     return jsonError("serial cannot be empty", 400);
                 }
-
-                if (currency !== undefined) {
-                    const result = db.query("DELETE FROM notes WHERE serial = ? AND currency = ?").run(serial, currency);
-
-                    if (result.changes === 0) {
-                        return jsonError(`note ${serial} (${currency}) not found`, 404);
-                    }
-
-                    return new Response(null, { status: 204 });
+                if (currencyParameter === null || currencyParameter.trim() === "") {
+                    return jsonError("currency query parameter is required", 400);
+                }
+                if (denominationParameter === null) {
+                    return jsonError("denomination query parameter is required", 400);
+                }
+                const denomination = Number(denominationParameter);
+                if (!Number.isInteger(denomination) || denomination <= 0) {
+                    return jsonError("denomination query parameter must be a positive integer", 400);
                 }
 
-                const matchingNotes = db.query<{ currency: string }, [string]>("SELECT currency FROM notes WHERE serial = ?").all(serial);
-                if (matchingNotes.length === 0) {
-                    return jsonError(`note ${serial} not found`, 404);
-                }
-                if (matchingNotes.length > 1) {
-                    return jsonError(`multiple notes have serial ${serial}, specify the currency`, 409);
+                const currency = currencyParameter.trim().toUpperCase();
+                const result = db.query("DELETE FROM notes WHERE serial = ? AND currency = ? AND denomination = ?")
+                    .run(serial, currency, denomination);
+                if (result.changes === 0) {
+                    return jsonError(`note ${serial} (${currency} ${denomination}) not found`, 404);
                 }
 
-                db.query("DELETE FROM notes WHERE serial = ? AND currency = ?").run(serial, matchingNotes[0]!.currency);
                 return new Response(null, { status: 204 });
             },
         },

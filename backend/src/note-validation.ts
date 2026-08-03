@@ -4,7 +4,7 @@ import type { CreateNoteInput } from "./types";
 
 type CurrencyValidator = {
     readonly code: CurrencyCode;
-    validate(serial: string, denomination: number): boolean;
+    isSupportedSerialFormat(serial: string, denomination: number): boolean;
 };
 
 type ParseCreateNoteResult =
@@ -36,7 +36,7 @@ export function parseCreateNoteInput(value: unknown): ParseCreateNoteResult {
         return { success: false, error: "currency must be a 3-character string" };
     }
 
-    if (typeof serial !== "string" || serial.length === 0) {
+    if (typeof serial !== "string" || serial.trim().length === 0) {
         return { success: false, error: "serial must be a non-empty string" };
     }
 
@@ -45,19 +45,19 @@ export function parseCreateNoteInput(value: unknown): ParseCreateNoteResult {
         note: {
             currency: currency.toUpperCase(),
             denomination,
-            serial,
+            serial: serial.trim().toUpperCase(),
         },
     };
 }
 
-export function getCurrencyValidationError(note: CreateNoteInput): string | undefined {
+export function getSerialFormatValidationError(note: CreateNoteInput): string | undefined {
     const validator = currencyValidators.get(note.currency);
 
     if (!validator) {
         return `currency ${note.currency} is not supported`;
     }
 
-    if (!validator.validate(note.serial, note.denomination)) {
-        return `note is not a valid ${validator.code} note`;
+    if (!validator.isSupportedSerialFormat(note.serial, note.denomination)) {
+        return `${note.serial} is not a supported ${validator.code} serial format for denomination ${note.denomination}`;
     }
 }

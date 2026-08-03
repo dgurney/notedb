@@ -1,5 +1,4 @@
 import { afterAll, describe, expect, it } from "bun:test";
-import { Database } from "bun:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -77,13 +76,13 @@ describe("notes API", () => {
     });
 
     it("creates, lists, and rejects duplicate notes", async () => {
-        const input = { currency: "eur", denomination: 10, serial: "PA8124161759" };
+        const input = { currency: "eur", denomination: 10, serial: "pa8124161759" };
         const createdResponse = await post(JSON.stringify(input));
         const createdBody: unknown = await createdResponse.json();
         const expectedNote = {
             currency: "EUR",
             denomination: input.denomination,
-            serial: input.serial,
+            serial: input.serial.toUpperCase(),
             created: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         };
 
@@ -100,8 +99,15 @@ describe("notes API", () => {
         const duplicateResponse = await post(JSON.stringify(input));
         expect(duplicateResponse.status).toBe(409);
         expect(await duplicateResponse.json()).toEqual({
-            error: "note PA8124161759 (EUR) already exists",
+            error: "note PA8124161759 (EUR 10) already exists",
         });
+
+        const differentlyCasedDuplicateResponse = await post(JSON.stringify({
+            ...input,
+            currency: "EUR",
+            serial: input.serial.toUpperCase(),
+        }));
+        expect(differentlyCasedDuplicateResponse.status).toBe(409);
     });
 
     it("deletes existing notes and reports missing notes", async () => {
@@ -109,33 +115,44 @@ describe("notes API", () => {
         const createResponse = await post(JSON.stringify({ currency: "EUR", denomination: 10, serial }));
         expect(createResponse.status).toBe(201);
 
-        const deleteResponse = await fetch(new URL(serial, baseUrl), { method: "DELETE" });
+        const deleteUrl = new URL(`${serial.toLowerCase()}?currency=eur&denomination=10`, baseUrl);
+        const deleteResponse = await fetch(deleteUrl, { method: "DELETE" });
         expect(deleteResponse.status).toBe(204);
         expect(await deleteResponse.text()).toBe("");
 
-        const missingResponse = await fetch(new URL(serial, baseUrl), { method: "DELETE" });
+        const missingResponse = await fetch(deleteUrl, { method: "DELETE" });
         expect(missingResponse.status).toBe(404);
-        expect(await missingResponse.json()).toEqual({ error: `note ${serial} not found` });
+        expect(await missingResponse.json()).toEqual({ error: `note ${serial} (EUR 10) not found` });
     });
 
-    it("requires currency to delete an ambiguous serial", async () => {
-        const serial = "SHARED123";
-        const created = new Date().toISOString();
-        const fixtureDb = new Database(process.env.DB_PATH);
-        fixtureDb.query("INSERT INTO notes (serial, currency, denomination, created) VALUES (?, ?, ?, ?)").run(serial, "EUR", 10, created);
-        fixtureDb.query("INSERT INTO notes (serial, currency, denomination, created) VALUES (?, ?, ?, ?)").run(serial, "USD", 10, created);
-        fixtureDb.close();
+    it("requires a complete note", async () => {
+        const serial = "RR3223530574";
+        const missingCurrencyResponse = await fetch(new URL(`${serial}?denomination=10`, baseUrl), { method: "DELETE" });
+        expect(missingCurrencyResponse.status).toBe(400);
+        expect(await missingCurrencyResponse.json()).toEqual({ error: "currency query parameter is required" });
 
-        const ambiguousResponse = await fetch(new URL(serial, baseUrl), { method: "DELETE" });
-        expect(ambiguousResponse.status).toBe(409);
-        expect(await ambiguousResponse.json()).toEqual({
-            error: `multiple notes have serial ${serial}, specify the currency`,
+        const missingDenominationResponse = await fetch(new URL(`${serial}?currency=EUR`, baseUrl), { method: "DELETE" });
+        expect(missingDenominationResponse.status).toBe(400);
+        expect(await missingDenominationResponse.json()).toEqual({ error: "denomination query parameter is required" });
+
+        const invalidDenominationResponse = await fetch(new URL(`${serial}?currency=EUR&denomination=ten`, baseUrl), { method: "DELETE" });
+        expect(invalidDenominationResponse.status).toBe(400);
+        expect(await invalidDenominationResponse.json()).toEqual({
+            error: "denomination query parameter must be a positive integer",
         });
+    });
 
-        const deleteEuroResponse = await fetch(new URL(`${serial}?currency=eur`, baseUrl), { method: "DELETE" });
-        expect(deleteEuroResponse.status).toBe(204);
+    it("deletes one exact note when a serial and currency are shared", async () => {
+        const serial = "A23456789A";
+        const oneDollarResponse = await post(JSON.stringify({ currency: "USD", denomination: 1, serial }));
+        const twoDollarResponse = await post(JSON.stringify({ currency: "USD", denomination: 2, serial }));
+        expect(oneDollarResponse.status).toBe(201);
+        expect(twoDollarResponse.status).toBe(201);
 
-        const deleteRemainingResponse = await fetch(new URL(serial, baseUrl), { method: "DELETE" });
+        const deleteOneDollarResponse = await fetch(new URL(`${serial}?currency=USD&denomination=1`, baseUrl), { method: "DELETE" });
+        expect(deleteOneDollarResponse.status).toBe(204);
+
+        const deleteRemainingResponse = await fetch(new URL(`${serial}?currency=USD&denomination=2`, baseUrl), { method: "DELETE" });
         expect(deleteRemainingResponse.status).toBe(204);
     });
 });

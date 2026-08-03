@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { getCurrencyValidationError, parseCreateNoteInput } from "./note-validation";
+import { getSerialFormatValidationError, parseCreateNoteInput } from "./note-validation";
 
 describe("create-note input parsing", () => {
     it.each([
@@ -23,11 +23,11 @@ describe("create-note input parsing", () => {
         expect(parseCreateNoteInput(value)).toEqual({ success: false, error });
     });
 
-    it("normalises valid currency codes", () => {
+    it("normalises valid currency codes and serials", () => {
         expect(parseCreateNoteInput({
             currency: "eur",
             denomination: 10,
-            serial: "PA8124161759",
+            serial: " pa8124161759 ",
         })).toEqual({
             success: true,
             note: {
@@ -39,17 +39,17 @@ describe("create-note input parsing", () => {
     });
 });
 
-describe("supported-currency validation", () => {
+describe("supported serial-format validation", () => {
     it("rejects unsupported currencies", () => {
-        expect(getCurrencyValidationError({
+        expect(getSerialFormatValidationError({
             currency: "GBP",
             denomination: 10,
             serial: "PA8124161759",
         })).toBe("currency GBP is not supported");
     });
 
-    it("accepts valid notes for supported currencies", () => {
-        expect(getCurrencyValidationError({
+    it("accepts supported serial formats", () => {
+        expect(getSerialFormatValidationError({
             currency: "EUR",
             denomination: 10,
             serial: "PA8124161759",
