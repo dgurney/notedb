@@ -1,5 +1,5 @@
 import { openDatabase } from "./database";
-import { getSerialFormatValidationError, parseCreateNoteInput } from "./note-validation";
+import { getSerialFormatValidationError, parseCreateNoteInput } from "./validation";
 import type { ErrorResponse, Note } from "./types";
 
 const dbPath = process.env.DB_PATH ?? "notes.db";

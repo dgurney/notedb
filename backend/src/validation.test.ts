@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { getSerialFormatValidationError, parseCreateNoteInput } from "./note-validation";
+import { getSerialFormatValidationError, parseCreateNoteInput } from "./validation";
 
 describe("create-note input parsing", () => {
     it.each([
