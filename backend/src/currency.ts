@@ -83,12 +83,12 @@ export class JPY extends Currency {
         const normalisedSerial = serial.toUpperCase();
 
         // Series F format: https://www.npb.go.jp/en/products/intro/faq.html
-        const jpyRegex = /^([ABCDEFGHJKLMNPQRSTUVWXYZ]{2})(\d{6})([ABCDEFGHJKLMNPQRSTUVWXYZ]{2})$/
+        const jpyRegex = /^([ABCDEFGHJKLMNPQRSTUVWXYZ]{2})(\d{6})([ABCDEFGHJKLMNPQRSTUVWXYZ]{2})$/;
         // Series D serials are only expected on ¥2000 notes
-        const jpyOldRegex = /^([ABCDEFGHJKLMNPQRSTUVWXYZ]{1,2})(\d{6})([ABCDEFGHJKLMNPQRSTUVWXYZ]{1})$/
+        const jpyOldRegex = /^([ABCDEFGHJKLMNPQRSTUVWXYZ]{1,2})(\d{6})([ABCDEFGHJKLMNPQRSTUVWXYZ]{1})$/;
         const serialMatch = denomination !== 2000 ? jpyRegex.exec(normalisedSerial) : jpyOldRegex.exec(normalisedSerial);
         if (!serialMatch) {
-            return false
+            return false;
         }
         const digits = Number.parseInt(serialMatch[2]!, 10);
         if (digits < 1 || digits > 900000) {
@@ -101,7 +101,7 @@ export class JPY extends Currency {
 
 export class USD extends Currency {
     constructor() {
-        super(CurrencyCode.USD, [1, 2, 5, 10, 20, 50, 100])
+        super(CurrencyCode.USD, [1, 2, 5, 10, 20, 50, 100]);
     }
     validSerial(serial: string, denomination: number): boolean {
         const normalisedSerial = serial.toUpperCase();
@@ -110,13 +110,13 @@ export class USD extends Currency {
         const redesignedRegex = /^([A-Z][A-L])([0-9]{8})([A-NP-Y*])$/;
         const serialMatch = denomination <= 2 ? oldRegex.exec(normalisedSerial) : redesignedRegex.exec(normalisedSerial) || oldRegex.exec(normalisedSerial);
         if (!serialMatch) {
-            return false
+            return false;
         }
         const digits = Number.parseInt(serialMatch[2]!, 10);
         if (digits < 1 || digits > 99999999) {
             return false;
         }
 
-        return true
+        return true;
     }
 }

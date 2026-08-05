@@ -65,10 +65,8 @@ function migrateLegacySchema(db: Database): void {
 }
 
 function initialiseDatabase(db: Database): void {
-    const schemaVersion = db.query<{ user_version: number }, []>("PRAGMA user_version").get()?.user_version;
-    if (schemaVersion === undefined) {
-        throw new Error("failed to read notes database schema version");
-    }
+    // PRAGMA user_version is documented to always return exactly one row
+    const schemaVersion = db.query<{ user_version: number }, []>("PRAGMA user_version").get()!.user_version;
     if (schemaVersion > SCHEMA_VERSION) {
         throw new Error(`notes database schema version ${schemaVersion} is newer than supported version ${SCHEMA_VERSION}`);
     }

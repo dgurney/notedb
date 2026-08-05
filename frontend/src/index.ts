@@ -1,8 +1,7 @@
-import { LMStudioClient, type LLM } from "@lmstudio/sdk";
+import { LMStudioClient, type LLM, type LLMInfo } from "@lmstudio/sdk";
 import { mkdir, readdir, rename } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import type { CreateNoteInput, ErrorResponse, Note } from "../../backend/src/types";
 
 const MODEL_FAMILY = "zai-org/glm-4.6v-flash";
 const NOTES_DIR = path.join(process.cwd(), "notes");
@@ -18,17 +17,19 @@ const createNoteSchema = z.object({
   currency: z.string().length(3),
   denomination: z.number().int().positive(),
   serial: z.string(),
-}) satisfies z.ZodType<CreateNoteInput>;
+});
+type CreateNoteInput = z.infer<typeof createNoteSchema>;
 const createNoteJsonSchema = z.toJSONSchema(createNoteSchema, { target: "draft-07" });
 const noteSchema = createNoteSchema.extend({
   created: z.string(),
-}) satisfies z.ZodType<Note>;
+});
+type Note = z.infer<typeof noteSchema>;
 const createNoteResponseSchema = z.object({
   note: noteSchema,
 });
 const errorResponseSchema = z.object({
   error: z.string(),
-}) satisfies z.ZodType<ErrorResponse>;
+});
 
 type CliOptions = {
   host: string;
@@ -56,17 +57,11 @@ type ImageProcessor = {
   archive(imagePath: string): Promise<string>;
 };
 
-type ModelReference = {
-  modelKey: string;
-  identifier: string;
-  path: string;
-};
+type ModelReference = Pick<LLM, "modelKey" | "identifier" | "path">;
 
-type DownloadedModelReference = {
+// listDownloadedModels() covers all domains, so `type` stays wide and the "llm" filter below narrows it
+type DownloadedModelReference = Pick<LLMInfo, "modelKey" | "path" | "displayName"> & {
   type: string;
-  modelKey: string;
-  path: string;
-  displayName: string;
 };
 
 type ModelResolverClient<Model extends ModelReference> = {
