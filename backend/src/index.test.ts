@@ -11,11 +11,11 @@ const testDirectory = mkdtempSync(join(tmpdir(), "notedb-test-"));
 process.env.DB_PATH = join(testDirectory, "notes.db");
 process.env.PORT = String(await findAvailablePort());
 
-const { server } = await import("./index");
+const { server, stopServer } = await import("./index");
 const baseUrl = new URL(`http://localhost:${server.port}/`);
 
-afterAll(() => {
-    server.stop(true);
+afterAll(async () => {
+    await stopServer();
     rmSync(testDirectory, { recursive: true });
 
     if (originalDbPath === undefined) {

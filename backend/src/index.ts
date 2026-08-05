@@ -93,4 +93,9 @@ export const server = Bun.serve({
     },
 });
 
+export async function stopServer(): Promise<void> {
+    await server.stop(true);
+    db.close();
+}
+
 console.log("server running on port", server.port);
