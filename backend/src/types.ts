@@ -1,16 +1,16 @@
-export interface CreateNoteInput {
+export type CreateNoteInput = {
     serial: string;
     currency: string;
     denomination: number;
-}
+};
 
 export interface Note extends CreateNoteInput {
     created: string;
 }
 
-export interface ErrorResponse {
+export type ErrorResponse = {
     error: string;
-}
+};
 
 export enum CurrencyCode {
     EUR = "EUR",

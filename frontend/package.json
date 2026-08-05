@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "bun build src/index.ts --target=bun --outdir=dist",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
     "test": "bun test",
     "ocr": "bun run src/index.ts"
   },
@@ -13,6 +16,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.7",
     "@types/bun": "latest"
   }
 }
