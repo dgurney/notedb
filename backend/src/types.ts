@@ -1,19 +1,19 @@
 export type CreateNoteInput = {
-    serial: string;
-    currency: string;
-    denomination: number;
+  serial: string;
+  currency: string;
+  denomination: number;
 };
 
 export interface Note extends CreateNoteInput {
-    created: string;
+  created: string;
 }
 
 export type ErrorResponse = {
-    error: string;
+  error: string;
 };
 
 export enum CurrencyCode {
-    EUR = "EUR",
-    JPY = "JPY",
-    USD = "USD",
+  EUR = "EUR",
+  JPY = "JPY",
+  USD = "USD",
 }

@@ -19,7 +19,9 @@ const createNoteSchema = z.object({
   serial: z.string(),
 });
 type CreateNoteInput = z.infer<typeof createNoteSchema>;
-const createNoteJsonSchema = z.toJSONSchema(createNoteSchema, { target: "draft-07" });
+const createNoteJsonSchema = z.toJSONSchema(createNoteSchema, {
+  target: "draft-07",
+});
 const noteSchema = createNoteSchema.extend({
   created: z.string(),
 });
@@ -60,7 +62,10 @@ type ImageProcessor = {
 type ModelReference = Pick<LLM, "modelKey" | "identifier" | "path">;
 
 // listDownloadedModels() covers all domains, so `type` stays wide and the "llm" filter below narrows it
-type DownloadedModelReference = Pick<LLMInfo, "modelKey" | "path" | "displayName"> & {
+type DownloadedModelReference = Pick<
+  LLMInfo,
+  "modelKey" | "path" | "displayName"
+> & {
   type: string;
 };
 
@@ -141,9 +146,15 @@ export async function getImagePaths(notesDir = NOTES_DIR): Promise<string[]> {
   const entries = await readdir(notesDir, { withFileTypes: true });
 
   return entries
-    .filter((entry) => entry.isFile() && SUPPORTED_IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        SUPPORTED_IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()),
+    )
     .map((entry) => path.join(notesDir, entry.name))
-    .sort((left, right) => path.basename(left).localeCompare(path.basename(right)));
+    .sort((left, right) =>
+      path.basename(left).localeCompare(path.basename(right)),
+    );
 }
 
 export async function archiveImage(
@@ -154,7 +165,9 @@ export async function archiveImage(
   const filename = path.basename(imagePath);
   const existingFilenames = await readdir(processedDir);
   if (existingFilenames.includes(filename)) {
-    throw new Error(`cannot archive ${filename} because ${path.join(processedDir, filename)} already exists`);
+    throw new Error(
+      `cannot archive ${filename} because ${path.join(processedDir, filename)} already exists`,
+    );
   }
 
   const destination = path.join(processedDir, filename);
@@ -162,7 +175,9 @@ export async function archiveImage(
   return destination;
 }
 
-export async function resolveModel<Model extends ModelReference>(client: ModelResolverClient<Model>): Promise<Model> {
+export async function resolveModel<Model extends ModelReference>(
+  client: ModelResolverClient<Model>,
+): Promise<Model> {
   const loadedModels = await client.llm.listLoaded();
   const loadedMatch = loadedModels.find((model) =>
     [model.modelKey, model.identifier, model.path].some(matchesModel),
@@ -226,7 +241,10 @@ export function parseExtractedNote(content: string): CreateNoteInput {
   };
 }
 
-export async function createNote(baseUrl: URL, note: CreateNoteInput): Promise<CreateNoteResult> {
+export async function createNote(
+  baseUrl: URL,
+  note: CreateNoteInput,
+): Promise<CreateNoteResult> {
   const response = await fetch(baseUrl, {
     method: "POST",
     headers: {
@@ -239,7 +257,9 @@ export async function createNote(baseUrl: URL, note: CreateNoteInput): Promise<C
   if (!response.ok) {
     const result = errorResponseSchema.safeParse(body);
     if (!result.success) {
-      throw new Error(`Backend returned an unexpected error response for ${note.serial}`);
+      throw new Error(
+        `Backend returned an unexpected error response for ${note.serial}`,
+      );
     }
 
     if (response.status === 409) {
@@ -251,7 +271,9 @@ export async function createNote(baseUrl: URL, note: CreateNoteInput): Promise<C
 
   const result = createNoteResponseSchema.safeParse(body);
   if (!result.success) {
-    throw new Error(`Backend returned an unexpected response for ${note.serial}`);
+    throw new Error(
+      `Backend returned an unexpected response for ${note.serial}`,
+    );
   }
 
   return { status: "created", note: result.data.note };
@@ -297,7 +319,9 @@ async function main() {
   const imagePaths = await getImagePaths();
 
   if (imagePaths.length === 0) {
-    throw new Error(`No supported image files found in ${NOTES_DIR}. Expected: ${Array.from(SUPPORTED_IMAGE_EXTENSIONS).join(", ")}.`);
+    throw new Error(
+      `No supported image files found in ${NOTES_DIR}. Expected: ${Array.from(SUPPORTED_IMAGE_EXTENSIONS).join(", ")}.`,
+    );
   }
 
   const client = new LMStudioClient();
@@ -309,15 +333,21 @@ async function main() {
   });
 
   for (const duplicate of result.duplicates) {
-    console.log(`Skipped existing note ${duplicate.serial} (${duplicate.currency} ${duplicate.denomination})`);
+    console.log(
+      `Skipped existing note ${duplicate.serial} (${duplicate.currency} ${duplicate.denomination})`,
+    );
   }
   for (const failure of result.failures) {
     console.error(`Failed to process ${failure.imagePath}: ${failure.error}`);
   }
 
-  console.log(`Created ${result.created.length} note${result.created.length === 1 ? "" : "s"} in ${backendUrl.toString()}`);
+  console.log(
+    `Created ${result.created.length} note${result.created.length === 1 ? "" : "s"} in ${backendUrl.toString()}`,
+  );
   if (result.duplicates.length > 0) {
-    console.log(`Skipped ${result.duplicates.length} existing note${result.duplicates.length === 1 ? "" : "s"}.`);
+    console.log(
+      `Skipped ${result.duplicates.length} existing note${result.duplicates.length === 1 ? "" : "s"}.`,
+    );
   }
   if (result.failures.length > 0) {
     throw new Error(

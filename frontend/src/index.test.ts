@@ -29,13 +29,15 @@ async function findAvailablePort(): Promise<number> {
   }
 
   await new Promise<void>((resolve, reject) => {
-    listener.close((error) => error ? reject(error) : resolve());
+    listener.close((error) => (error ? reject(error) : resolve()));
   });
   return address.port;
 }
 
 afterAll(async () => {
-  await Promise.all(temporaryDirectories.map((directory) => rm(directory, { recursive: true })));
+  await Promise.all(
+    temporaryDirectories.map((directory) => rm(directory, { recursive: true })),
+  );
 });
 
 const backendClientPort = await findAvailablePort();
@@ -47,7 +49,10 @@ const backendClientServer = Bun.serve({
 
     switch (url.pathname) {
       case "/created":
-        return Response.json({ note: { ...note, created: "2026-08-02T12:00:00.000Z" } }, { status: 201 });
+        return Response.json(
+          { note: { ...note, created: "2026-08-02T12:00:00.000Z" } },
+          { status: 201 },
+        );
       case "/duplicate":
         return Response.json({ error: "already exists" }, { status: 409 });
       case "/rejected":
@@ -119,54 +124,68 @@ describe("image discovery", () => {
 describe("image processing", () => {
   it("archives successful and duplicate images while retaining failures and continuing", async () => {
     const archived: string[] = [];
-    const processed = await processImagePaths(["created.jpg", "failed.jpg", "duplicate.jpg", "archive-failed.jpg"], {
-      async extract(imagePath) {
-        if (imagePath === "failed.jpg") {
-          throw new Error("model output was invalid");
-        }
-        let serial = "PA8124161759";
-        if (imagePath === "duplicate.jpg") {
-          serial = "EA3388561264";
-        } else if (imagePath === "archive-failed.jpg") {
-          serial = "UB8593576913";
-        }
-        return {
-          currency: "EUR",
-          denomination: 10,
-          serial,
-        };
+    const processed = await processImagePaths(
+      ["created.jpg", "failed.jpg", "duplicate.jpg", "archive-failed.jpg"],
+      {
+        async extract(imagePath) {
+          if (imagePath === "failed.jpg") {
+            throw new Error("model output was invalid");
+          }
+          let serial = "PA8124161759";
+          if (imagePath === "duplicate.jpg") {
+            serial = "EA3388561264";
+          } else if (imagePath === "archive-failed.jpg") {
+            serial = "UB8593576913";
+          }
+          return {
+            currency: "EUR",
+            denomination: 10,
+            serial,
+          };
+        },
+        async create(note) {
+          if (note.serial === "EA3388561264") {
+            return { status: "duplicate", note };
+          }
+          return {
+            status: "created",
+            note: { ...note, created: "2026-08-02T12:00:00.000Z" },
+          };
+        },
+        async archive(imagePath) {
+          if (imagePath === "archive-failed.jpg") {
+            throw new Error("processed destination already exists");
+          }
+          archived.push(imagePath);
+          return `processed/${imagePath}`;
+        },
       },
-      async create(note) {
-        if (note.serial === "EA3388561264") {
-          return { status: "duplicate", note };
-        }
-        return { status: "created", note: { ...note, created: "2026-08-02T12:00:00.000Z" } };
-      },
-      async archive(imagePath) {
-        if (imagePath === "archive-failed.jpg") {
-          throw new Error("processed destination already exists");
-        }
-        archived.push(imagePath);
-        return `processed/${imagePath}`;
-      },
-    });
+    );
 
     expect(processed).toEqual({
-      created: [{
-        currency: "EUR",
-        denomination: 10,
-        serial: "PA8124161759",
-        created: "2026-08-02T12:00:00.000Z",
-      }, {
-        currency: "EUR",
-        denomination: 10,
-        serial: "UB8593576913",
-        created: "2026-08-02T12:00:00.000Z",
-      }],
-      duplicates: [{ currency: "EUR", denomination: 10, serial: "EA3388561264" }],
+      created: [
+        {
+          currency: "EUR",
+          denomination: 10,
+          serial: "PA8124161759",
+          created: "2026-08-02T12:00:00.000Z",
+        },
+        {
+          currency: "EUR",
+          denomination: 10,
+          serial: "UB8593576913",
+          created: "2026-08-02T12:00:00.000Z",
+        },
+      ],
+      duplicates: [
+        { currency: "EUR", denomination: 10, serial: "EA3388561264" },
+      ],
       failures: [
         { imagePath: "failed.jpg", error: "model output was invalid" },
-        { imagePath: "archive-failed.jpg", error: "processed destination already exists" },
+        {
+          imagePath: "archive-failed.jpg",
+          error: "processed destination already exists",
+        },
       ],
     });
     expect(archived).toEqual(["created.jpg", "duplicate.jpg"]);
@@ -188,7 +207,9 @@ describe("model resolution", () => {
       system: { listDownloadedModels: async () => [] },
     };
 
-    expect((await resolveModel(client)).identifier).toBe(loadedModel.identifier);
+    expect((await resolveModel(client)).identifier).toBe(
+      loadedModel.identifier,
+    );
   });
 
   it("loads a matching downloaded model", async () => {
@@ -207,12 +228,14 @@ describe("model resolution", () => {
         },
       },
       system: {
-        listDownloadedModels: async () => [{
-          type: "llm",
-          modelKey: "other-key",
-          path: "zai-org/glm-4.6v-flash",
-          displayName: "GLM",
-        }],
+        listDownloadedModels: async () => [
+          {
+            type: "llm",
+            modelKey: "other-key",
+            path: "zai-org/glm-4.6v-flash",
+            displayName: "GLM",
+          },
+        ],
       },
     };
 
@@ -239,11 +262,15 @@ describe("model resolution", () => {
 
 describe("model output", () => {
   it("validates and normalises extracted notes", () => {
-    expect(parseExtractedNote(JSON.stringify({
-      currency: "eur",
-      denomination: 10,
-      serial: " PA8124161759 ",
-    }))).toEqual({
+    expect(
+      parseExtractedNote(
+        JSON.stringify({
+          currency: "eur",
+          denomination: 10,
+          serial: " PA8124161759 ",
+        }),
+      ),
+    ).toEqual({
       currency: "EUR",
       denomination: 10,
       serial: "PA8124161759",
@@ -252,11 +279,15 @@ describe("model output", () => {
 
   it("rejects malformed JSON and invalid note data", () => {
     expect(() => parseExtractedNote("{")).toThrow();
-    expect(() => parseExtractedNote(JSON.stringify({
-      currency: "EU",
-      denomination: 10,
-      serial: "PA8124161759",
-    }))).toThrow();
+    expect(() =>
+      parseExtractedNote(
+        JSON.stringify({
+          currency: "EU",
+          denomination: 10,
+          serial: "PA8124161759",
+        }),
+      ),
+    ).toThrow();
   });
 });
 
@@ -268,27 +299,54 @@ describe("backend client", () => {
   const note = { currency: "EUR", denomination: 10, serial: "PA8124161759" };
 
   it("returns created and duplicate results", async () => {
-    expect(createNote(new URL(`http://localhost:${backendClientServer.port}/created`), note)).resolves.toEqual({
+    expect(
+      createNote(
+        new URL(`http://localhost:${backendClientServer.port}/created`),
+        note,
+      ),
+    ).resolves.toEqual({
       status: "created",
       note: { ...note, created: "2026-08-02T12:00:00.000Z" },
     });
-    expect(createNote(new URL(`http://localhost:${backendClientServer.port}/duplicate`), note)).resolves.toEqual({
+    expect(
+      createNote(
+        new URL(`http://localhost:${backendClientServer.port}/duplicate`),
+        note,
+      ),
+    ).resolves.toEqual({
       status: "duplicate",
       note,
     });
   });
 
   it("reports backend rejections", async () => {
-    expect(createNote(new URL(`http://localhost:${backendClientServer.port}/rejected`), note)).rejects.toThrow(
-      "Backend rejected PA8124161759: invalid note",
-    );
+    expect(
+      createNote(
+        new URL(`http://localhost:${backendClientServer.port}/rejected`),
+        note,
+      ),
+    ).rejects.toThrow("Backend rejected PA8124161759: invalid note");
   });
 
   it("rejects unexpected success and error response shapes", async () => {
-    expect(createNote(new URL(`http://localhost:${backendClientServer.port}/unexpected-error`), note)).rejects.toThrow(
+    expect(
+      createNote(
+        new URL(
+          `http://localhost:${backendClientServer.port}/unexpected-error`,
+        ),
+        note,
+      ),
+    ).rejects.toThrow(
       "Backend returned an unexpected error response for PA8124161759",
     );
-    expect(createNote(new URL(`http://localhost:${backendClientServer.port}/unexpected-success`), note)).rejects.toThrow(
+    expect(
+      createNote(
+        new URL(
+          `http://localhost:${backendClientServer.port}/unexpected-success`,
+        ),
+        note,
+      ),
+    ).rejects.toThrow(
       "Backend returned an unexpected response for PA8124161759",
     );
   });
