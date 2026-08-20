@@ -23,6 +23,7 @@
       },
       "style": {
         "noNestedTernary": "error",
+        "noNonNullAssertion": "error",
         "useBlockStatements": "error",
         "useConsistentTypeDefinitions": {
           "level": "error",
@@ -31,12 +32,82 @@
           }
         }
       },
+      "complexity": {
+        "noBannedTypes": "error",
+        "noExcessiveNestedTestSuites": "error"
+      },
+      "correctness": {
+        "noUndeclaredDependencies": "error"
+      },
       "suspicious": {
+        "noDoubleEquals": "error",
         "noEmptyBlockStatements": "error",
-        "noExplicitAny": "error"
+        "noExplicitAny": "error",
+        "noFocusedTests": "error",
+        "noMisplacedAssertion": "error",
+        "noSkippedTests": "error",
+        "noTsIgnore": "error"
       }
     }
   },
+  "css": {
+    "linter": {
+      "enabled": true
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.css"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useGenericFontNames": "error"
+          },
+          "complexity": {
+            "noImportantStyles": "error"
+          },
+          "correctness": {
+            "noInvalidDirectionInLinearGradient": "error",
+            "noInvalidGridAreas": "error",
+            "noInvalidPositionAtImportRule": "error",
+            "noMissingVarFunction": "error",
+            "noUnknownFunction": "error",
+            "noUnknownMediaFeatureName": "error",
+            "noUnknownProperty": "error",
+            "noUnknownPseudoClass": "error",
+            "noUnknownPseudoElement": "error",
+            "noUnknownTypeSelector": "error",
+            "noUnknownUnit": "error",
+            "noUnmatchableAnbSelector": "error"
+          },
+          "nursery": {
+            "useBaseline": {
+              "level": "error",
+              "options": {
+                "available": "newly",
+                "allowProperties": ["user-select"]
+              }
+            }
+          },
+          "suspicious": {
+            "noDeprecatedMediaType": "error",
+            "noDuplicateAtImportRules": "error",
+            "noDuplicateCustomProperties": "error",
+            "noDuplicateFontNames": "error",
+            "noDuplicateProperties": "error",
+            "noDuplicateSelectorsKeyframeBlock": "error",
+            "noEmptyBlock": "error",
+            "noEmptySource": "error",
+            "noImportantInKeyframe": "error",
+            "noIrregularWhitespace": "error",
+            "noShorthandPropertyOverrides": "error",
+            "noUnknownAtRules": "error",
+            "noUselessEscapeInString": "error"
+          }
+        }
+      }
+    }
+  ],
   "assist": {
     "enabled": false
   }

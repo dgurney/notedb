@@ -78,7 +78,7 @@ function migrateLegacySchema(db: Database): void {
 }
 
 function initialiseDatabase(db: Database): void {
-  // PRAGMA user_version is documented to always return exactly one row
+  // biome-ignore lint/style/noNonNullAssertion: PRAGMA user_version is documented to always return exactly one row
   const schemaVersion = db
     .query<{ user_version: number }, []>("PRAGMA user_version")
     .get()!.user_version;

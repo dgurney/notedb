@@ -95,6 +95,7 @@ export class JPY extends Currency {
     if (!serialMatch) {
       return false;
     }
+    // biome-ignore lint/style/noNonNullAssertion: both regexes are anchored with a mandatory digits capture group 2, so it is always present when the match succeeds
     const digits = Number.parseInt(serialMatch[2]!, 10);
     if (digits < 1 || digits > 900000) {
       return false;
@@ -121,6 +122,7 @@ export class USD extends Currency {
     if (!serialMatch) {
       return false;
     }
+    // biome-ignore lint/style/noNonNullAssertion: both regexes are anchored with a mandatory digits capture group 2, so it is always present when the match succeeds
     const digits = Number.parseInt(serialMatch[2]!, 10);
     if (digits < 1 || digits > 99999999) {
       return false;
