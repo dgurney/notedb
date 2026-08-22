@@ -43,13 +43,23 @@ describe("notes database schema", () => {
     ).toEqual({ user_version: 1 });
     db.query(
       "INSERT INTO notes (serial, currency, denomination, created) VALUES (?, ?, ?, ?)",
-    ).run("A23456789A", "USD", 1, new Date().toISOString());
+    ).run(
+      "A23456789A",
+      "USD",
+      1,
+      Temporal.Now.instant().toString({ smallestUnit: "millisecond" }),
+    );
     expect(() =>
       db
         .query(
           "INSERT INTO notes (serial, currency, denomination, created) VALUES (?, ?, ?, ?)",
         )
-        .run("A23456789A", "USD", 2, new Date().toISOString()),
+        .run(
+          "A23456789A",
+          "USD",
+          2,
+          Temporal.Now.instant().toString({ smallestUnit: "millisecond" }),
+        ),
     ).not.toThrow();
 
     db.close();

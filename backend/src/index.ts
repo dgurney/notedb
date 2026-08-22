@@ -34,7 +34,9 @@ export const server = Bun.serve({
         }
 
         const noteInput = parsed.note;
-        const created = new Date().toISOString();
+        const created = Temporal.Now.instant().toString({
+          smallestUnit: "millisecond",
+        });
         const validationError = validateNote(noteInput);
         if (validationError) {
           return jsonError(validationError, 400);
