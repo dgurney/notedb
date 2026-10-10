@@ -20,15 +20,15 @@ function createLegacyDatabase(): { db: Database; path: string } {
   const path = join(directory, "notes.db");
   const db = new Database(path);
   db.run(`
-      CREATE TABLE notes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        serial TEXT NOT NULL,
-        currency TEXT NOT NULL,
-        denomination INTEGER NOT NULL,
-        created TEXT NOT NULL,
-        UNIQUE(serial, currency)
-      )
-    `);
+    CREATE TABLE notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      serial TEXT NOT NULL,
+      currency TEXT NOT NULL,
+      denomination INTEGER NOT NULL,
+      created TEXT NOT NULL,
+      UNIQUE(serial, currency)
+    )
+  `);
   return { db, path };
 }
 

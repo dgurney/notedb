@@ -1,5 +1,5 @@
 import { openDatabase } from "./database";
-import { validateNote, parseCreateNoteInput } from "./validation";
+import { parseCreateNoteInput, validateNote } from "./validation";
 import type { ErrorResponse, Note } from "./types";
 
 const dbPath = process.env.DB_PATH ?? "notes.db";
@@ -34,9 +34,6 @@ export const server = Bun.serve({
         }
 
         const noteInput = parsed.note;
-        const created = Temporal.Now.instant().toString({
-          smallestUnit: "millisecond",
-        });
         const validationError = validateNote(noteInput);
         if (validationError) {
           return jsonError(validationError, 400);
@@ -55,6 +52,9 @@ export const server = Bun.serve({
           );
         }
 
+        const created = Temporal.Now.instant().toString({
+          smallestUnit: "millisecond",
+        });
         db.query(
           "INSERT INTO notes (serial, currency, denomination, created) VALUES (?,?,?,?)",
         ).run(
@@ -72,13 +72,13 @@ export const server = Bun.serve({
       DELETE: (req) => {
         const serial = req.params.serial.trim().toUpperCase();
         const searchParams = new URL(req.url).searchParams;
-        const currencyParameter = searchParams.get("currency");
+        const currency = searchParams.get("currency")?.trim().toUpperCase();
         const denominationParameter = searchParams.get("denomination");
 
         if (serial === "") {
           return jsonError("serial cannot be empty", 400);
         }
-        if (currencyParameter === null || currencyParameter.trim() === "") {
+        if (!currency) {
           return jsonError("currency query parameter is required", 400);
         }
         if (denominationParameter === null) {
@@ -92,7 +92,6 @@ export const server = Bun.serve({
           );
         }
 
-        const currency = currencyParameter.trim().toUpperCase();
         const result = db
           .query(
             "DELETE FROM notes WHERE serial = ? AND currency = ? AND denomination = ?",

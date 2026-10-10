@@ -1,6 +1,7 @@
 import { LMStudioClient, type LLM, type LLMInfo } from "@lmstudio/sdk";
 import { mkdir, readdir, rename } from "node:fs/promises";
 import path from "node:path";
+import { parseArgs } from "node:util";
 import { z } from "zod";
 
 const MODEL_FAMILY = "zai-org/glm-4.6v-flash";
@@ -9,7 +10,7 @@ const SUPPORTED_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg"]);
 const SYSTEM_PROMPT = `You are an expert money sorter. Your job is to look at the provided image, and identify the following information from it:
 - currency (ISO 4217 currency code)
 - denomination
-- Serial number
+- serial number
 
 The user is not interacting with you directly, so you cannot ask any followup questions, and you must not say anything extraneous apart from the JSON output.`;
 
@@ -84,65 +85,32 @@ function matchesModel(value: string): boolean {
 }
 
 export function parseCliOptions(argv: readonly string[]): CliOptions {
-  const options: CliOptions = {
-    host: "localhost",
-    port: 3000,
-  };
+  const { values } = parseArgs({
+    args: [...argv],
+    options: {
+      host: { type: "string", default: "localhost" },
+      port: { type: "string", default: "3000" },
+    },
+  });
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-
-    if (arg === "--host") {
-      const value = argv[index + 1];
-      if (!value) {
-        throw new Error(`${arg} requires a value`);
-      }
-      options.host = value;
-      index += 1;
-      continue;
-    }
-
-    if (arg.startsWith("--host=")) {
-      options.host = arg.slice("--host=".length);
-      continue;
-    }
-
-    if (arg === "--port") {
-      const value = argv[index + 1];
-      if (!value) {
-        throw new Error("--port requires a value");
-      }
-      options.port = parsePort(value);
-      index += 1;
-      continue;
-    }
-
-    if (arg.startsWith("--port=")) {
-      options.port = parsePort(arg.slice("--port=".length));
-      continue;
-    }
-
-    throw new Error(`Unexpected argument: ${arg}`);
-  }
-
-  if (options.host.trim().length === 0) {
+  if (values.host.trim().length === 0) {
     throw new Error("host cannot be empty");
   }
 
-  return options;
+  return { host: values.host, port: parsePort(values.port) };
 }
 
 function parsePort(value: string): number {
   const port = Number(value);
 
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-    throw new Error(`Invalid port: ${value}`);
+    throw new Error(`Invalid port: ${JSON.stringify(value)}`);
   }
 
   return port;
 }
 
-export async function getImagePaths(notesDir = NOTES_DIR): Promise<string[]> {
+export async function getImagePaths(notesDir: string): Promise<string[]> {
   const entries = await readdir(notesDir, { withFileTypes: true });
 
   return entries
@@ -151,16 +119,13 @@ export async function getImagePaths(notesDir = NOTES_DIR): Promise<string[]> {
         entry.isFile() &&
         SUPPORTED_IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()),
     )
-    .map((entry) => path.join(notesDir, entry.name))
-    .sort((left, right) =>
-      path.basename(left).localeCompare(path.basename(right)),
-    );
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right))
+    .map((name) => path.join(notesDir, name));
 }
 
-export async function archiveImage(
-  imagePath: string,
-  processedDir = path.join(path.dirname(imagePath), "processed"),
-): Promise<string> {
+export async function archiveImage(imagePath: string): Promise<string> {
+  const processedDir = path.join(path.dirname(imagePath), "processed");
   await mkdir(processedDir, { recursive: true });
   const filename = path.basename(imagePath);
   const existingFilenames = await readdir(processedDir);
@@ -283,6 +248,10 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function count(amount: number, noun: string): string {
+  return `${amount} ${noun}${amount === 1 ? "" : "s"}`;
+}
+
 export async function processImagePaths(
   imagePaths: readonly string[],
   processor: ImageProcessor,
@@ -316,7 +285,7 @@ export async function processImagePaths(
 async function main() {
   const options = parseCliOptions(process.argv.slice(2));
   const backendUrl = new URL(`http://${options.host}:${options.port}/`);
-  const imagePaths = await getImagePaths();
+  const imagePaths = await getImagePaths(NOTES_DIR);
 
   if (imagePaths.length === 0) {
     throw new Error(
@@ -329,7 +298,7 @@ async function main() {
   const result = await processImagePaths(imagePaths, {
     extract: (imagePath) => extractNote(client, model, imagePath),
     create: (note) => createNote(backendUrl, note),
-    archive: (imagePath) => archiveImage(imagePath),
+    archive: archiveImage,
   });
 
   for (const duplicate of result.duplicates) {
@@ -342,16 +311,14 @@ async function main() {
   }
 
   console.log(
-    `Created ${result.created.length} note${result.created.length === 1 ? "" : "s"} in ${backendUrl.toString()}`,
+    `Created ${count(result.created.length, "note")} in ${backendUrl}`,
   );
   if (result.duplicates.length > 0) {
-    console.log(
-      `Skipped ${result.duplicates.length} existing note${result.duplicates.length === 1 ? "" : "s"}.`,
-    );
+    console.log(`Skipped ${count(result.duplicates.length, "existing note")}.`);
   }
   if (result.failures.length > 0) {
     throw new Error(
-      `${result.failures.length} image${result.failures.length === 1 ? "" : "s"} failed and remain in ${NOTES_DIR}`,
+      `${count(result.failures.length, "image")} failed and remain in ${NOTES_DIR}`,
     );
   }
   process.exit(0);

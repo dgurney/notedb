@@ -27,7 +27,19 @@ const EUROPA_CONTROL_VALUES: Partial<Record<string, number>> = {
   Z: 9,
 };
 
-abstract class Currency {
+// Serial letters never include I or O
+// Series F format: https://www.npb.go.jp/en/products/intro/faq.html
+const JPY_SERIES_F_REGEX = /^[A-HJ-NP-Z]{2}(\d{6})[A-HJ-NP-Z]{2}$/;
+// Series D serials are only expected on ¥2000 notes
+const JPY_SERIES_D_REGEX = /^[A-HJ-NP-Z]{1,2}(\d{6})[A-HJ-NP-Z]$/;
+const JPY_MAX_SERIAL_NUMBER = 900_000;
+
+// Serial numbers start at 00000001, so an all-zero number is rejected
+const USD_OLD_REGEX = /^[A-L](?!0{8})\d{8}[A-NP-Y*]$/;
+// Redesigned notes prefix a series letter; the old format remains valid
+const USD_REDESIGNED_REGEX = /^[A-Z]?[A-L](?!0{8})\d{8}[A-NP-Y*]$/;
+
+export abstract class Currency {
   constructor(
     public readonly code: CurrencyCode,
     private readonly validDenominations: readonly [number, ...number[]],
@@ -46,29 +58,20 @@ export class EUR extends Currency {
   }
   validSerial(serial: string, _denomination: number): boolean {
     const normalisedSerial = serial.toUpperCase();
-    const europaSimpleMatch = /^([a-zA-Z]{2})(\d{10})$/;
-    if (!europaSimpleMatch.test(normalisedSerial)) {
+    if (!/^[A-Z]{2}\d{10}$/.test(normalisedSerial)) {
       return false;
     }
 
-    const first = normalisedSerial.charAt(0);
-    const controlValue = EUROPA_CONTROL_VALUES[first];
+    const controlValue = EUROPA_CONTROL_VALUES[normalisedSerial.charAt(0)];
     if (controlValue === undefined) {
       return false;
     }
 
-    let sum = 0;
-    for (const [index, character] of [...normalisedSerial].entries()) {
-      if (index === 0) {
-        continue;
-      }
-      if (index === 1) {
-        const code = character.charCodeAt(0);
-        const letterSum = Math.floor(code / 10) + (code % 10);
-        sum += letterSum;
-        continue;
-      }
-      sum += Number.parseInt(character, 10);
+    // The second letter contributes the digit sum of its ASCII code
+    const letterCode = normalisedSerial.charCodeAt(1);
+    let sum = Math.floor(letterCode / 10) + (letterCode % 10);
+    for (const digit of normalisedSerial.slice(2)) {
+      sum += Number(digit);
     }
 
     return digitalRoot(sum) === controlValue;
@@ -81,27 +84,17 @@ export class JPY extends Currency {
   }
   validSerial(serial: string, denomination: number): boolean {
     const normalisedSerial = serial.toUpperCase();
-
-    // Series F format: https://www.npb.go.jp/en/products/intro/faq.html
-    const jpyRegex =
-      /^([ABCDEFGHJKLMNPQRSTUVWXYZ]{2})(\d{6})([ABCDEFGHJKLMNPQRSTUVWXYZ]{2})$/;
-    // Series D serials are only expected on ¥2000 notes
-    const jpyOldRegex =
-      /^([ABCDEFGHJKLMNPQRSTUVWXYZ]{1,2})(\d{6})([ABCDEFGHJKLMNPQRSTUVWXYZ]{1})$/;
     const serialMatch =
-      denomination !== 2000
-        ? jpyRegex.exec(normalisedSerial)
-        : jpyOldRegex.exec(normalisedSerial);
+      denomination === 2000
+        ? JPY_SERIES_D_REGEX.exec(normalisedSerial)
+        : JPY_SERIES_F_REGEX.exec(normalisedSerial);
     if (!serialMatch) {
       return false;
     }
-    // biome-ignore lint/style/noNonNullAssertion: both regexes are anchored with a mandatory digits capture group 2, so it is always present when the match succeeds
-    const digits = Number.parseInt(serialMatch[2]!, 10);
-    if (digits < 1 || digits > 900000) {
-      return false;
-    }
 
-    return true;
+    // biome-ignore lint/style/noNonNullAssertion: the digits group is mandatory in both regexes
+    const digits = Number(serialMatch[1]!);
+    return digits >= 1 && digits <= JPY_MAX_SERIAL_NUMBER;
   }
 }
 
@@ -111,23 +104,7 @@ export class USD extends Currency {
   }
   validSerial(serial: string, denomination: number): boolean {
     const normalisedSerial = serial.toUpperCase();
-
-    const oldRegex = /^([A-L])([0-9]{8})([A-NP-Y*])$/;
-    const redesignedRegex = /^([A-Z][A-L])([0-9]{8})([A-NP-Y*])$/;
-    const serialMatch =
-      denomination <= 2
-        ? oldRegex.exec(normalisedSerial)
-        : redesignedRegex.exec(normalisedSerial) ||
-          oldRegex.exec(normalisedSerial);
-    if (!serialMatch) {
-      return false;
-    }
-    // biome-ignore lint/style/noNonNullAssertion: both regexes are anchored with a mandatory digits capture group 2, so it is always present when the match succeeds
-    const digits = Number.parseInt(serialMatch[2]!, 10);
-    if (digits < 1 || digits > 99999999) {
-      return false;
-    }
-
-    return true;
+    const regex = denomination <= 2 ? USD_OLD_REGEX : USD_REDESIGNED_REGEX;
+    return regex.test(normalisedSerial);
   }
 }

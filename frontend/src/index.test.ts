@@ -1,6 +1,5 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -16,38 +15,24 @@ import {
 
 const temporaryDirectories: string[] = [];
 
-async function findAvailablePort(): Promise<number> {
-  const listener = createServer();
-  await new Promise<void>((resolve, reject) => {
-    listener.once("error", reject);
-    listener.listen(0, "127.0.0.1", resolve);
-  });
-
-  const address = listener.address();
-  if (address === null || typeof address === "string") {
-    throw new Error("failed to allocate a TCP port for the integration test");
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    listener.close((error) => (error ? reject(error) : resolve()));
-  });
-  return address.port;
-}
-
 afterAll(async () => {
   await Promise.all(
     temporaryDirectories.map((directory) => rm(directory, { recursive: true })),
   );
 });
 
-const backendClientPort = await findAvailablePort();
+const note = { currency: "EUR", denomination: 10, serial: "PA8124161759" };
 const backendClientServer = Bun.serve({
-  port: backendClientPort,
+  port: 0,
   async fetch(request) {
-    const url = new URL(request.url);
-    const note = await request.json();
+    if (
+      request.method !== "POST" ||
+      !Bun.deepEquals(await request.json(), note)
+    ) {
+      return Response.json({ error: "unexpected request" }, { status: 400 });
+    }
 
-    switch (url.pathname) {
+    switch (new URL(request.url).pathname) {
       case "/created":
         return Response.json(
           { note: { ...note, created: "2026-08-02T12:00:00.000Z" } },
@@ -77,10 +62,12 @@ describe("CLI options", () => {
   });
 
   it.each([
-    { argv: ["--host"], message: "--host requires a value" },
+    { argv: ["--host"], message: "Option '--host <value>' argument missing" },
     { argv: ["--host="], message: "host cannot be empty" },
-    { argv: ["--port", "0"], message: "Invalid port: 0" },
-    { argv: ["unexpected"], message: "Unexpected argument: unexpected" },
+    { argv: ["--port", "0"], message: 'Invalid port: "0"' },
+    { argv: ["--port="], message: 'Invalid port: ""' },
+    { argv: ["unexpected"], message: "Unexpected argument 'unexpected'" },
+    { argv: ["--verbose"], message: "Unknown option '--verbose'" },
   ])("rejects invalid arguments with $message", ({ argv, message }) => {
     expect(() => parseCliOptions(argv)).toThrow(message);
   });
@@ -114,7 +101,7 @@ describe("image discovery", () => {
     expect(await getImagePaths(directory)).toEqual([]);
 
     await writeFile(imagePath, "second image");
-    expect(archiveImage(imagePath)).rejects.toThrow(
+    await expect(archiveImage(imagePath)).rejects.toThrow(
       `cannot archive note.jpg because ${archivedPath} already exists`,
     );
     expect(await getImagePaths(directory)).toEqual([imagePath]);
@@ -254,7 +241,7 @@ describe("model resolution", () => {
       system: { listDownloadedModels: async () => [] },
     };
 
-    expect(resolveModel(client)).rejects.toThrow(
+    await expect(resolveModel(client)).rejects.toThrow(
       "No local zai-org/glm-4.6v-flash model found in LM Studio. Download it first, then rerun this command.",
     );
   });
@@ -296,10 +283,8 @@ describe("backend client", () => {
     backendClientServer.stop(true);
   });
 
-  const note = { currency: "EUR", denomination: 10, serial: "PA8124161759" };
-
   it("returns created and duplicate results", async () => {
-    expect(
+    await expect(
       createNote(
         new URL(`http://localhost:${backendClientServer.port}/created`),
         note,
@@ -308,7 +293,7 @@ describe("backend client", () => {
       status: "created",
       note: { ...note, created: "2026-08-02T12:00:00.000Z" },
     });
-    expect(
+    await expect(
       createNote(
         new URL(`http://localhost:${backendClientServer.port}/duplicate`),
         note,
@@ -320,7 +305,7 @@ describe("backend client", () => {
   });
 
   it("reports backend rejections", async () => {
-    expect(
+    await expect(
       createNote(
         new URL(`http://localhost:${backendClientServer.port}/rejected`),
         note,
@@ -329,7 +314,7 @@ describe("backend client", () => {
   });
 
   it("rejects unexpected success and error response shapes", async () => {
-    expect(
+    await expect(
       createNote(
         new URL(
           `http://localhost:${backendClientServer.port}/unexpected-error`,
@@ -339,7 +324,7 @@ describe("backend client", () => {
     ).rejects.toThrow(
       "Backend returned an unexpected error response for PA8124161759",
     );
-    expect(
+    await expect(
       createNote(
         new URL(
           `http://localhost:${backendClientServer.port}/unexpected-success`,

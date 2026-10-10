@@ -68,10 +68,10 @@ function migrateLegacySchema(db: Database): void {
     db.run("ALTER TABLE notes RENAME TO notes_legacy");
     db.run(CREATE_NOTES_TABLE);
     db.run(`
-          INSERT INTO notes (id, serial, currency, denomination, created)
-          SELECT id, UPPER(serial), UPPER(currency), denomination, created
-          FROM notes_legacy
-        `);
+      INSERT INTO notes (id, serial, currency, denomination, created)
+      SELECT id, UPPER(serial), UPPER(currency), denomination, created
+      FROM notes_legacy
+    `);
     db.run("DROP TABLE notes_legacy");
     db.run(`PRAGMA user_version = ${SCHEMA_VERSION}`);
   })();
@@ -88,8 +88,7 @@ function initialiseDatabase(db: Database): void {
     );
   }
 
-  const hasNotesTable = notesTableExists(db);
-  if (!hasNotesTable) {
+  if (!notesTableExists(db)) {
     if (schemaVersion !== 0) {
       throw new Error(
         `notes database schema version is ${schemaVersion}, but the notes table is missing`,

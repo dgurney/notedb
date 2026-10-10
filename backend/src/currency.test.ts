@@ -96,14 +96,9 @@ describe("JPY serial-format validation", () => {
     },
   );
 
-  it.each([
-    { denomination: 1000, serial: "AA037730LS" },
-    { denomination: 2000, serial: "SA815862T" },
-    { denomination: 5000, serial: "AA431134VL" },
-    { denomination: 10000, serial: "AA161373AH" },
-  ])(
-    "accepts supported denomination $denomination with a valid serial",
-    ({ denomination, serial }) => {
+  it.each([1000, 2000, 5000, 10000])(
+    "accepts supported denomination %i",
+    (denomination) => {
       expect(jpy.validDenomination(denomination)).toBe(true);
     },
   );

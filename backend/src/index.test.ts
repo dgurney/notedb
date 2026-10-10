@@ -1,15 +1,11 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
-import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const originalDbPath = process.env.DB_PATH;
-const originalPort = process.env.PORT;
-
 const testDirectory = mkdtempSync(join(tmpdir(), "notedb-test-"));
 process.env.DB_PATH = join(testDirectory, "notes.db");
-process.env.PORT = String(await findAvailablePort());
+process.env.PORT = "0";
 
 const { server, stopServer } = await import("./index");
 const baseUrl = new URL(`http://localhost:${server.port}/`);
@@ -17,37 +13,7 @@ const baseUrl = new URL(`http://localhost:${server.port}/`);
 afterAll(async () => {
   await stopServer();
   rmSync(testDirectory, { recursive: true });
-
-  if (originalDbPath === undefined) {
-    delete process.env.DB_PATH;
-  } else {
-    process.env.DB_PATH = originalDbPath;
-  }
-
-  if (originalPort === undefined) {
-    delete process.env.PORT;
-  } else {
-    process.env.PORT = originalPort;
-  }
 });
-
-async function findAvailablePort(): Promise<number> {
-  const listener = createServer();
-  await new Promise<void>((resolve, reject) => {
-    listener.once("error", reject);
-    listener.listen(0, "127.0.0.1", resolve);
-  });
-
-  const address = listener.address();
-  if (address === null || typeof address === "string") {
-    throw new Error("failed to allocate a TCP port for the integration test");
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    listener.close((error) => (error ? reject(error) : resolve()));
-  });
-  return address.port;
-}
 
 async function post(body: string): Promise<Response> {
   return fetch(baseUrl, {
@@ -96,7 +62,6 @@ describe("notes API", () => {
   it("creates, lists, and rejects duplicate notes", async () => {
     const input = { currency: "eur", denomination: 10, serial: "pa8124161759" };
     const createdResponse = await post(JSON.stringify(input));
-    const createdBody: unknown = await createdResponse.json();
     const expectedNote = {
       currency: "EUR",
       denomination: input.denomination,
@@ -107,18 +72,11 @@ describe("notes API", () => {
     };
 
     expect(createdResponse.status).toBe(201);
-    expect(createdBody).toEqual({ note: expectedNote });
-    if (
-      typeof createdBody !== "object" ||
-      createdBody === null ||
-      !("note" in createdBody)
-    ) {
-      throw new Error("create-note response did not contain a note");
-    }
+    expect(await createdResponse.json()).toEqual({ note: expectedNote });
 
     const listResponse = await fetch(baseUrl);
     expect(listResponse.status).toBe(200);
-    expect(await listResponse.json()).toEqual([createdBody.note]);
+    expect(await listResponse.json()).toEqual([expectedNote]);
 
     const duplicateResponse = await post(JSON.stringify(input));
     expect(duplicateResponse.status).toBe(409);

@@ -1,18 +1,11 @@
-import { EUR, JPY, USD } from "./currency";
-import { CurrencyCode } from "./types";
-import type { CreateNoteInput } from "./types";
-
-type CurrencyValidator = {
-  readonly code: CurrencyCode;
-  validDenomination(denomination: number): boolean;
-  validSerial(serial: string, denomination: number): boolean;
-};
+import { type Currency, EUR, JPY, USD } from "./currency";
+import { type CreateNoteInput, CurrencyCode } from "./types";
 
 type ParseCreateNoteResult =
   | { success: true; note: CreateNoteInput }
   | { success: false; error: string };
 
-const currencyValidators = new Map<string, CurrencyValidator>([
+const currencies = new Map<string, Currency>([
   [CurrencyCode.EUR, new EUR()],
   [CurrencyCode.JPY, new JPY()],
   [CurrencyCode.USD, new USD()],
@@ -56,17 +49,17 @@ export function parseCreateNoteInput(value: unknown): ParseCreateNoteResult {
 }
 
 export function validateNote(note: CreateNoteInput): string | undefined {
-  const validator = currencyValidators.get(note.currency);
+  const currency = currencies.get(note.currency);
 
-  if (!validator) {
+  if (!currency) {
     return `currency ${note.currency} is not supported`;
   }
 
-  if (!validator.validDenomination(note.denomination)) {
-    return `denomination ${note.denomination} is not supported for ${validator.code}`;
+  if (!currency.validDenomination(note.denomination)) {
+    return `denomination ${note.denomination} is not supported for ${currency.code}`;
   }
 
-  if (!validator.validSerial(note.serial, note.denomination)) {
-    return `${note.serial} is not a supported ${validator.code} serial format for denomination ${note.denomination}`;
+  if (!currency.validSerial(note.serial, note.denomination)) {
+    return `${note.serial} is not a supported ${currency.code} serial format for denomination ${note.denomination}`;
   }
 }

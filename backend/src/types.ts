@@ -4,9 +4,9 @@ export type CreateNoteInput = {
   denomination: number;
 };
 
-export interface Note extends CreateNoteInput {
+export type Note = CreateNoteInput & {
   created: string;
-}
+};
 
 export type ErrorResponse = {
   error: string;

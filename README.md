@@ -1,6 +1,6 @@
 # notedb
 
-`notedb` is a banknote database I made for my own purposes, with the primary goal of learning to use Bun for backend development. 
+`notedb` is a banknote database I made for my own purposes, with the primary goal of learning to use Bun for backend development.
 
 Europa-series EUR, JPY, and USD banknotes are currently supported with denomination and serial-format validation.
 
@@ -77,7 +77,7 @@ The backend accepts these environment variables:
 | `PORT` | `3000` | HTTP server port |
 | `DB_PATH` | `notes.db` | SQLite database path |
 
-Any necessary schema updates are applied automatically whenever possible.
+Schema migrations run automatically on startup.
 
 ## API
 
@@ -154,7 +154,7 @@ bun x tsc --noEmit
 
 ## Current limitations
 
-- OCR accuracy depends on image quality and the local model. At the time of writing the code it was found that the currently hardcoded `glm-4.6v-flash` model has the best accuracy for this task, even compared to Gemma 4 which was occasionally misreading serial numbers. 
+- OCR accuracy depends on image quality and the local model. The hardcoded `glm-4.6v-flash` model read serial numbers more reliably than the alternatives tried, including Gemma 4.
 - The current validation can reject impossible serial formats and unsupported denominations, but cannot prove a fully correct read if a mistake happens to be technically valid.
 - Images are currently processed sequentially.
 
